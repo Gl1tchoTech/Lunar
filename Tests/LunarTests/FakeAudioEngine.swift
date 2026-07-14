@@ -15,6 +15,21 @@ final class FakeAudioEngine: AudioPlayerInterface {
     /// Complete ordered log of every command sent.
     private(set) var sentCommands: [PlaybackCommand] = []
 
+    /// Fake queue state so the existing AudioEngineQueueTests (which
+    /// call into `engine.queueSize` and `engine.currentQueueIndex`
+    /// directly) compile against the fake the same way they would
+    /// against the real `AudioEngine`.
+    private(set) var fakeQueue: [PlaybackRequest] = []
+    private(set) var fakeQueueIndex: Int = 0
+
+    /// Queue projection — matches `AudioEngine` shape.
+    var queueSize: Int { fakeQueue.count }
+    var currentQueueIndex: Int { fakeQueue.isEmpty ? -1 : fakeQueueIndex }
+    var upcomingRequests: [PlaybackRequest] {
+        guard fakeQueueIndex + 1 < fakeQueue.count else { return [] }
+        return Array(fakeQueue[(fakeQueueIndex + 1)...])
+    }
+
     /// Optional fake-load helper: when a `.load` or `.crossfade`
     /// arrives, simulate by setting state as if the song finished
     /// loading. Default off so tests can opt-in via `autoLoad`.
@@ -23,6 +38,26 @@ final class FakeAudioEngine: AudioPlayerInterface {
 
     func send(_ command: PlaybackCommand) async {
         sentCommands.append(command)
+
+        // Mirror the real engine's queue bookkeeping so tests that
+        // exercise `playQueue` / `enqueueNext` observe equivalent state.
+        switch command {
+        case .load(let req):
+            if fakeQueue.isEmpty {
+                fakeQueue = [req]
+                fakeQueueIndex = 0
+            } else if !fakeQueue.contains(where: { $0.songID == req.songID }) {
+                fakeQueue = [req]
+                fakeQueueIndex = 0
+            } else if let i = fakeQueue.firstIndex(where: { $0.songID == req.songID }) {
+                fakeQueueIndex = i
+            }
+        case .next:
+            if fakeQueueIndex + 1 < fakeQueue.count { fakeQueueIndex += 1 }
+        case .previous:
+            if fakeQueueIndex > 0 { fakeQueueIndex -= 1 }
+        default: break
+        }
 
         guard autoLoad else { return }
 

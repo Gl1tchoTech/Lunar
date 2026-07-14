@@ -97,11 +97,11 @@ struct ArtistDetailView: View {
 
     private func tapped(_ song: Song) {
         guard let service = libraryService else { return }
-        let requests = service.playbackRequests(
+        let (requests, startIndex) = service.playbackRequests(
             for: artist.songs,
             startingAt: song.persistentModelID
         )
-        audioEngine.playQueue(requests)
+        audioEngine.playQueue(requests, startIndex: startIndex)
         presentingNowPlaying = true
     }
 }

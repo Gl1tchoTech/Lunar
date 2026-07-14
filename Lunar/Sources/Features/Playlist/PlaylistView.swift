@@ -23,6 +23,12 @@ struct PlaylistView: View {
     /// having to wrap the result in `NavigationLink`.
     @State private var navPath: [PlaylistNavEnum] = []
 
+    // Smart-tile state, loaded once via `.task` instead of inside
+    // `body` (which would re-run a synchronous SwiftData fetch every
+    // render and stutter the UI).
+    @State private var mostPlayed: [Song] = []
+    @State private var recentlyPlayed: [Song] = []
+
     @Query(sort: [SortDescriptor(\Playlist.dateCreated, order: .forward)])
     private var playlists: [Playlist]
 
@@ -99,6 +105,11 @@ struct PlaylistView: View {
                 if libraryService == nil {
                     libraryService = LibraryService(context: modelContext)
                 }
+                // Hydrate smart-tile state ONCE. Subsequent renders
+                // read from `mostPlayed` / `recentlyPlayed` instead of
+                // re-running a SwiftData fetch every time `body` runs.
+                mostPlayed = libraryService?.mostPlayedSongs() ?? []
+                recentlyPlayed = libraryService?.recentlyPlayedSongs() ?? []
             }
         }
     }
@@ -111,18 +122,11 @@ struct PlaylistView: View {
     // MARK: - Smart tiles
 
     private var smartTilesRow: some View {
-        let service = libraryService ?? LibraryService(context: modelContext)
-        let mostPlayed = service.mostPlayedSongs()
-        let recentlyPlayed = service.recentlyPlayedSongs()
-
-        let totalMostPlayed = mostPlayed.reduce(0.0) { $0 + $1.duration }
-        let totalRecently = recentlyPlayed.reduce(0.0) { $0 + $1.duration }
-
-        return HStack(spacing: Spacing.m) {
+        HStack(spacing: Spacing.m) {
             SmartPlaylistTile(
                 kind: .mostPlayed,
                 songCount: mostPlayed.count,
-                totalDuration: totalMostPlayed,
+                totalDuration: mostPlayed.reduce(0.0) { $0 + $1.duration },
                 action: {
                     navPath.append(.smart(.mostPlayed(mostPlayed)))
                 }
@@ -130,7 +134,7 @@ struct PlaylistView: View {
             SmartPlaylistTile(
                 kind: .recentlyPlayed,
                 songCount: recentlyPlayed.count,
-                totalDuration: totalRecently,
+                totalDuration: recentlyPlayed.reduce(0.0) { $0 + $1.duration },
                 action: {
                     navPath.append(.smart(.recentlyPlayed(recentlyPlayed)))
                 }

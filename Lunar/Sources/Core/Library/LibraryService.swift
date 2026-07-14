@@ -154,14 +154,51 @@ final class LibraryService {
         }
     }
 
-    /// Same as `playbackRequests(for:)` but with the queue starting
-    /// at the position of `startingSongID`. Used when the user taps
-    /// a specific row in the middle of an album / playlist.
-    func playbackRequests(for songs: [Song], startingAt startingSongID: PersistentIdentifier) -> [PlaybackRequest] {
-        guard let startIdx = songs.firstIndex(where: { $0.persistentModelID == startingSongID }) else {
-            return playbackRequests(for: songs)
+    /// Build the queue **and** the start index in one call.
+    ///
+    /// **Why a tuple, not two overloads?** An earlier draft shipped
+    /// two methods with identical parameter labels (`(for:startingAt:)`)
+    /// but different return types — Swift rejects overloading by return
+    /// type alone, so it failed to compile.
+    ///
+    /// **Why return the FULL list instead of slicing?** An even earlier
+    /// draft sliced to `songs[startIdx...]` and dropped every preceding
+    /// track from the returned queue — the user's "Previous" button
+    /// then couldn't reach the start of the album / playlist. Callers
+    /// now pass `startIndex` to `AudioEngine.playQueue` explicitly.
+    ///
+    /// When `startingSongID` is `nil` **or** not in `songs`, the queue
+    /// starts at index 0.
+    func playbackRequests(
+        for songs: [Song],
+        startingAt startingSongID: PersistentIdentifier? = nil
+    ) -> (requests: [PlaybackRequest], startIndex: Int) {
+        // Build the full queue (preserve order so album / playlist
+        // playback walks the expected sequence).
+        let requests = songs.compactMap { song -> PlaybackRequest? in
+            guard let url = MusicLibrary.absoluteURL(forFileName: song.fileName) else {
+                return nil
+            }
+            return PlaybackRequest(
+                songID: song.persistentModelID,
+                title: song.title,
+                artist: song.artist,
+                fileURL: url,
+                duration: song.duration
+            )
         }
-        let ordered = Array(songs[startIdx...])
-        return playbackRequests(for: ordered)
+
+        // Resolve the start index. If the start song was filtered out
+        // by `compactMap` (file missing), gracefully fall back to 0 so
+        // playback still proceeds.
+        let startIdx: Int = {
+            guard
+                let id = startingSongID,
+                let resolved = requests.firstIndex(where: { $0.songID == id })
+            else { return 0 }
+            return resolved
+        }()
+
+        return (requests, startIdx)
     }
 }

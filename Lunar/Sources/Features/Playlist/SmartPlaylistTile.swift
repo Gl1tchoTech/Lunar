@@ -39,8 +39,23 @@ struct SmartPlaylistTile: View {
     let totalDuration: TimeInterval
     let action: () -> Void
 
+    /// Debounce flag — prevents a double-tap from enqueueing two
+    /// `NavigationStack` pushes for the same destination. Springs
+    /// back enabled after a short delay. Without this, the tile can
+    /// be pushed twice rapidly when the user double-taps, which
+    /// `NavigationStack` handles oddly (back-twice to dismiss).
+    @State private var didTap: Bool = false
+
     var body: some View {
-        Button(action: action) {
+        Button {
+            guard !didTap else { return }
+            didTap = true
+            action()
+            Task {
+                try? await Task.sleep(nanoseconds: 350_000_000)
+                didTap = false
+            }
+        } label: {
             VStack(spacing: Spacing.s) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)

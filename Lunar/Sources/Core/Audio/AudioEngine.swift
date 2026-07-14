@@ -242,6 +242,11 @@ final class AudioEngine: AudioPlayerInterface {
     /// through the rest of the queue. Safe to call when the queue is
     /// empty — in that case the request becomes the entire queue
     /// starting at index 0.
+    ///
+    /// `insertAt = min(queueIndex + 1, queue.count)` (NOT `max`!) — earlier
+    /// versions accidentally pushed "Play Next" to the very back of the
+    /// queue because `queueIndex + 1 < queue.count` makes `max(...)`
+    /// collapse to `queue.count`. Tracked under the post-Step-4 review.
     func enqueueNext(_ request: PlaybackRequest) {
         if queue.isEmpty {
             queue = [request]
@@ -251,7 +256,7 @@ final class AudioEngine: AudioPlayerInterface {
             // separately if needed.
             return
         }
-        let insertAt = max(queueIndex + 1, queue.count)
+        let insertAt = min(queueIndex + 1, queue.count)
         queue.insert(request, at: insertAt)
     }
 
@@ -268,15 +273,15 @@ final class AudioEngine: AudioPlayerInterface {
 
     // MARK: - Load + crossfade
 
-    /// Read the file off-thread, then schedule it on the active node
-    /// on the main thread.
+    /// Resolve the request's file. We open `AVAudioFile` synchronously
+    /// on the main actor — the open itself is microsecond-cheap; the
+    /// real I/O happens lazily during `scheduleSegment` / `scheduleFile`.
+    /// Doing it synchronously keeps `AVAudioFile` (which is not `Sendable`)
+    /// out of any cross-actor return path, so Swift 6 strict concurrency
+    /// stays happy.
     private func load(request: PlaybackRequest) async {
         let url = request.fileURL
-        let file: AVAudioFile? = await Task.detached(priority: .userInitiated) {
-            try? AVAudioFile(forReading: url)
-        }.value
-
-        guard let file else {
+        guard let file = try? AVAudioFile(forReading: url) else {
             assertionFailure("AudioEngine failed to read \(url.lastPathComponent)")
             return
         }
@@ -291,15 +296,11 @@ final class AudioEngine: AudioPlayerInterface {
         scheduleCurrentNode(from: 0)
     }
 
-    /// Pre-decodes the next file on a background task and ramps
-    /// `current` → 0 / `next` → 1 over `durationSeconds`.
+    /// Pre-decodes the next file on the main thread (file open is cheap)
+    /// and ramps `current` → 0 / `next` → 1 over `durationSeconds`.
     private func crossfade(to request: PlaybackRequest, durationSeconds: Double) async {
         let url = request.fileURL
-        let nextFile: AVAudioFile? = await Task.detached(priority: .userInitiated) {
-            try? AVAudioFile(forReading: url)
-        }.value
-
-        guard let nextFile else { return }
+        guard let nextFile = try? AVAudioFile(forReading: url) else { return }
 
         let nextNode: AVAudioPlayerNode = (currentNode === playerA) ? playerB : playerA
         nextNode.volume = 0
