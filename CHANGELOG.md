@@ -6,15 +6,43 @@ All notable changes to **Lunar** are documented here. The format follows
 
 ## [Unreleased]
 
-### Added
-- SwiftData models for Song / Album / Artist / Playlist
+### Planned (Step 3+)
 - AVAudioEngine-based playback: real DSP, gapless, crossfade
-- 10-band EQ with presets and reverb
+- 10-band EQ view (data layer already shipped in 0.2.0)
 - Lyrics (.lrc manual import)
 - Sleep timer
-- Smart playlists (Most Played, Recently Played)
-- Now Playing screen + sheets
-- Settings rows (Player Style · App Theme · Equalizer · Playback · Language · Import)
+- Smart playlists (Most Played / Recently Played) — Predicates already shipped in 0.2.0
+- Full Now Playing screen + sheets
+- Settings rows (Player Style · App Theme · Equalizer · Playback · Language · Backup)
+- Library tabs: Songs sorts, Artists / Albums / Source
+- Playlist tab + Create flow
+- Import: Local Files · Wi-Fi Drive · Cloud
+- Browse: downloader / streamer
+
+## [0.2.0] — Step 2: SwiftData layer
+
+### Added
+- **`Song`** — `@Model` with full audio metadata (file path, codec info, size). `isFavorite`, `playCount`, `lastPlayed`, `dateAdded`. `artwork` uses `@Attribute(.externalStorage)` for scroll performance. Relationships: `album (Album?)`, `artistEntity (Artist?)`, `listenEvents ([ListenEvent])` with `.cascade`.
+- **`Album`** — title, denormalized `artist`, optional `year`, external-storage artwork. `songs: [Song]` with `.nullify` inverse.
+- **`Artist`** — name, optional `bio`, external-storage artwork. `songs: [Song]` with `.nullify` inverse.
+- **`Playlist`** — many-to-many `songs: [Song]`. `isSystemPlaylist` flag reserved for future system-curated collections. **Favorites are NOT stored here** — they are queried via `#Predicate<Song> { $0.isFavorite }`.
+- **`ListenEvent`** — `timestamp`, `playedDuration`, `completed`. Inverse declared on `Song.listenEvents` for automatic cascade cleanup.
+- **`EQPreset`** — 10-band native `[Float]` (SwiftData auto-Codable). `isBuiltIn` flag prevents user deletion of factory presets.
+- **`LunarSchema`** — central registry used by `LunarApp` and test helpers.
+- **`BuiltInEQPresets`** — 13 factory presets (Flat / Acoustic / Bass Booster / Bass Reducer / Classical / Dance / Electronic / Hip-Hop / Jazz / Pop / R&B / Rock / Vocal Booster) seeded **only on first launch**.
+- **`ModelContainer` wired in `LunarApp`** — explicit `init()` with `Schema(LunarSchema.models)` and `fatalError` fallback for unrecoverable store failures.
+- **`ModelTests`** (`Tests/LunarTests/ModelTests.swift`) — 7 tests covering empty-store invariants, init defaults, schema round-trip, relationship wiring, and seeding.
+
+### Schema design notes
+- **`Song.fileName` is a relative path.** Sandbox absolute URLs rot on app update/restore; we resolve to a real URL at read time (`MusicLibrary.absoluteURL(forFileName:)` once that helper ships in Step 3+).
+- **Denormalized fields** (`Song.artist`, `Song.albumTitle`, `Album.artist`) enable fast `@Query` `SortDescriptor` queries — iOS 17 SwiftData has known performance issues sorting through relationships.
+- **`@Attribute(.externalStorage)` on artwork** keeps image blobs out of SQLite row fetches.
+- **Playlists do not yet preserve song order** — iOS 17 SwiftData does not natively support ordered many-to-many. Until a `PlaylistEntry` join entity is introduced, songs in a playlist view are sorted by `dateAdded` per `FetchDescriptor`.
+
+### Step 2 open work (for Step 3+)
+- `PlaylistEntry` for explicit ordering & drag-to-reorder
+- `MusicLibrary` helper that resolves the relative `fileName` to a sandbox-abs `URL`
+- `LibraryService` — façade for mutations (toggleFavorite, createPlaylist, deleteSong) so views never call `context.save()` directly
 
 ## [0.1.0] — 2026-07-14
 

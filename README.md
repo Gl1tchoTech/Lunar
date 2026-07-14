@@ -107,7 +107,12 @@ All themes share the same information architecture — only the visual chrome ch
 - [x] 5-tab shell + iPad split view + empty states
 - [x] Design tokens & 6 Player Themes
 - [x] SideStore unsigned-IPA workflow
-- [ ] SwiftData models (Song · Album · Artist · Playlist · ListenEvent)
+- [x] **SwiftData models** (Song · Album · Artist · Playlist · ListenEvent · EQPreset)
+- [x] **ModelContainer wired into `LunarApp` + first-launch seeding of 13 EQ presets**
+- [x] **Model tests** — empty-store, init defaults, schema round-trip, relationships
+- [ ] `MusicLibrary` helper (resolve relative `fileName` → sandbox URL)
+- [ ] `LibraryService` façade for mutations (toggleFavorite, createPlaylist)
+- [ ] `PlaylistEntry` join entity for ordered playlists (drag-to-reorder)
 - [ ] AVAudioEngine + 10-band EQ + crossfade + sleep timer
 - [ ] Library: Songs / Artists / Albums / Source tabs
 - [ ] Sort menu + select mode + song menu
