@@ -33,6 +33,11 @@ enum MusicLibrary {
 
     /// Root directory for imported audio files. Created lazily.
     static var rootDirectory: URL {
+        // Internal override hook used by `MusicImporterTests` so the
+        // importer writes into a temp dir instead of the real sandbox.
+        // Production code never sets this; the setter is `internal` so
+        // the unit-test target can reach it.
+        if let override = _rootDirectoryOverride { return override }
         let fm = FileManager.default
         let base = (try? fm.url(
             for: .applicationSupportDirectory,
@@ -42,6 +47,19 @@ enum MusicLibrary {
         )) ?? fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
         return base.appendingPathComponent("Music", isDirectory: true)
     }
+
+    /// **Test-only** override for `rootDirectory`. Nil in production.
+    /// Marked `internal` so the `LunarTests` target can flip it inside
+    /// `setUp` to point at a temp dir.
+    ///
+    /// `nonisolated(unsafe)` is the Swift 5.10 mechanism for a
+    /// test-only mutable static that the test target reaches across
+    /// an isolation boundary — a cleaner alternative to wrapping
+    /// `MusicLibrary` in a `@MainActor`. The override is only ever
+    /// written on `@MainActor` test `setUp` paths and read by tests
+    /// running on the same actor, so the lack of a serialiser is
+    /// safe in practice.
+    nonisolated(unsafe) static var _rootDirectoryOverride: URL?
 
     /// Make sure the root directory exists. Call once on app launch.
     @discardableResult

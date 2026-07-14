@@ -133,18 +133,16 @@ All themes share the same information architecture — only the visual chrome ch
 - [x] **AudioEngine queue** — in-memory `[PlaybackRequest]`, `enqueueNext`, `playQueue`, `next()`, `previous()` walking the queue, automatic advance in `handleNextNodeCompleted`. Race-gate via `isTransitioning`.
 - [x] **Settings polish** — `PlayerStyleView` (six theme preview cards, tap to apply), `AppThemeView` (System / Light / Dark segmented picker + 3×2 accent swatch grid persisted via `AppThemeSettings`). Equalizer / Playback / Language / About stay stub views for Step 5.
 
-### ⏭ Step 5 onwards
-- [ ] `PlaylistEntry` join entity for ordered playlists (drag-to-reorder)
-- [ ] Equalizer: real 10-band slider view + reverb
-- [ ] Playback Setting: crossfade duration + gapless toggles + gapless compliance
-- [ ] Lyrics (`.lrc` manual import) + editor
-- [ ] Sleep-timer UI inside Now Playing
-- [ ] Song Info sheet + Song Menu (rename, add to playlist, share)
-- [ ] Sleep Timer picker (5/15/30/45/60 + Off)
-- [ ] Import tab: Local Files · Wi-Fi Drive · Other Apps · Cloud
-- [ ] Browse: downloader/streamer (placeholder today)
-- [ ] Feedback / Rate Us / Privacy Policy destinations
-- [ ] Final QA + sideload test
+### ⏭ Step 5 Tier 2 onwards
+- [ ] Tier 2 — System hooks for "feels like a music player" (`MPNowPlayingInfoCenter` + `MPRemoteCommandCenter` + `AVRoutePickerView`)
+- [ ] Tier 2 — Settings polish (Sleep-timer UI + Playback Settings + Lyrics `.lrc` import + Equalizer 10-band sliders)
+- [ ] Tier 2 — `"My Favorites"` smart playlist + Shuffle / Repeat state persistence
+- [ ] Tier 3 — Search (Library) + Song Info sheet (rename / add to playlist / share / show in Finder)
+- [ ] Tier 4 — Import surface expansion: Wi-Fi Drive · Other Apps · Cloud Providers
+- [ ] Tier 4 — Browse downloader/streamer (placeholder today)
+- [ ] Future — `PlaylistEntry` join entity for ordered playlists (drag-to-reorder)
+- [ ] Future — Feedback / Rate Us / Privacy Policy destinations
+- [ ] Future — Final QA + sideload test on a real iPhone
 
 ---
 
