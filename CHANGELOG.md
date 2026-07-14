@@ -6,6 +6,26 @@ All notable changes to **Lunar** are documented here. The format follows
 
 ## [Unreleased]
 
+### Step 5 — Tier 2 Part 3: Playback Settings (crossfade + gapless)
+
+- **`PlaybackSettings`** (`Lunar/Sources/Core/Audio/PlaybackSettings.swift`) — NEW `@MainActor @Observable final class`. Two stored values with `didSet` persistence + `onChange` callback broadcast:
+  - `crossfadeDurationSeconds` (Double) — clamp-ranged `0.0…12.0`, snapped to a `0.5 s` step. Defaults to **6.0** (the prior hardcoded constant).
+  - `gaplessEnabled` (Bool) — defaults to **true**.
+  Both keys read on `init` from `UserDefaults` so a relaunch restores the user's choice. The static `clamp(_:)` helper is shared by the init restore + the public `updateCrossfade(seconds:)` mutator.
+- **`AudioEngine.swift` runtime mirror** — replaced `private let crossfadeDurationSeconds = 6` with `var crossfadeDurationSeconds: Double = 6` (publicly readable for tests). Added `var gaplessEnabled: Bool`. `next()` now branches:
+  - `gaplessEnabled == true` — `crossfade(...)` path with the user's slider duration. **0 s** = instant swap.
+  - `gaplessEnabled == false` — `.load(_)` + `play()` path so a brief silence separates songs.
+  `rampCrossfade(over:)` now short-circuits for `duration ≤ 0`: sets `outgoing.volume = 0 / incoming.volume = 1`, calls `outgoing.stop()`, returns — no divide-by-zero in `elapsed / duration` math.
+- **`LunarAppCoordinator` wiring** — `task` block now takes `PlaybackSettings` and (a) pushes stored values into `audioEngine.crossfadeDurationSeconds` / `gaplessEnabled` once at launch, then (b) installs a `[weak audioEngine]` closure as `playbackSettings.onChange` so future slider / toggle edits propagate to the live engine in the same MainActor run-loop.
+- **`LunarApp.swift`** — new `@State private var playbackSettings = PlaybackSettings()`. Injected into the view environment alongside `audioEngine`, `sleepTimer`, `playerTheme`, `appThemeSettings`.
+- **`FakeAudioEngine.swift`** — added `var crossfadeDurationSeconds: Double = 6` + `var gaplessEnabled: Bool = true` so future tests can drive the same settings surface without instantiating real `AVAudioEngine`.
+- **`PlaybackSettingsView`** (`Lunar/Sources/Settings/PlaybackSettingsView.swift`) — NEW (`Form`-style Settings page). Three sections:
+  1. **Crossfade** — custom `CrossfadeSliderRow` (Title + live `Off / 3.5 s / 12.0 s` label bound to the slider, range `0…12`, step `0.5`). App accent tint on the slider.
+  2. **Continuity** — `Toggle` for **Gapless Playback**, with a footer that switches between two pieces of explanatory text depending on the toggle's state.
+  3. **Current** — summary chip that resolves to one of **Pure gapless · X.X s**, **Gapless crossfade · X.X s**, or **Cut transition · X.X s** so the user always sees the effective behaviour.
+- **`SettingsView.swift`** — replaced the `playbackStub` placeholder with the real **Playback Setting** destination. `Settings` now leads the user into a fully wired Form.
+- **`PlaybackSettingsTests`** (`Tests/LunarTests/PlaybackSettingsTests.swift`) — 13 tests covering: defaults (`6.0 s` + gapless on), the locked constants, clamp between 0 and 12, half-second snap, restoration of stored values (including the 0-value edge that would otherwise alias as "missing key"), persistence-on-write, didSet `onChange` firing once per write, and the `updateCrossfade` mutator going through `clamp`.
+
 ### Step 5 — Tier 2 Part 2: Sleep Timer UI in Now Playing + Settings
 
 - **`SleepTimer.isActive`** (`Lunar/Sources/Core/Audio/SleepTimer.swift`) — new computed property `var isActive: Bool { secondsRemaining > 0 }`. Single source of truth for the "timer is running" check; replaces fragile "durationMinutes > 0" inference from views.

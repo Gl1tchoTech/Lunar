@@ -22,6 +22,13 @@ final class FakeAudioEngine: AudioPlayerInterface {
     private(set) var fakeQueue: [PlaybackRequest] = []
     private(set) var fakeQueueIndex: Int = 0
 
+    /// Mirrors of the real `AudioEngine.crossfadeDurationSeconds` and
+    /// `AudioEngine.gaplessEnabled`. Defaults match the production
+    /// engine's first-launch values, so callers do not need to
+    /// initialise them in setup.
+    var crossfadeDurationSeconds: Double = 6
+    var gaplessEnabled: Bool = true
+
     /// Queue projection — matches `AudioEngine` shape.
     var queueSize: Int { fakeQueue.count }
     var currentQueueIndex: Int { fakeQueue.isEmpty ? -1 : fakeQueueIndex }

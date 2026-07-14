@@ -125,6 +125,14 @@ All themes share the same information architecture — only the visual chrome ch
 - [x] **`LibraryView` Songs tab** — sort menu + shuffle / play pills + `@Query` rows + context menu + empty state
 - [x] **`LibraryServiceTests`** (8) + **`AudioEngineControllerTests`** + `FakeAudioEngine` + `EQController` (9)
 
+### ✅ Step 5 — Tier 2 Part 3: Playback Settings (`pending`)
+- [ ] **Crossfade duration slider** — 0…12 s, snapped to 0.5 s. 0 = instant swap (gapless); ≥ 0.5 = classic overlap fade. Default 6 s.
+- [ ] **Gapless Playback toggle** — when ON, the queue advance swaps the next song into the active node; when OFF, a brief silence separates songs. Default ON.
+- [ ] **PlaybackSettingsView** (`Form` with Crossfade + Continuity + Current sections), replaces the Step-4 `StubPage`.
+- [ ] **AudioEngine.next() branching** + `rampCrossfade` zero-duration guard + divide-by-zero defence.
+- [ ] **LunarAppCoordinator wiring** pushes stored values into the live engine + mirrors `onChange` events.
+- [ ] **`PlaybackSettingsTests`** — 13 tests on defaults, clamp, restoration, persistence, didSet+onChange.
+
 ### ✅ Step 5 — Tier 2 Part 2: Sleep Timer UI (`pending`)
 - [ ] **Moon chip in Now Playing top chrome** — pill with countdown next to the dismiss arrow (Cyber Neon accent when active). Tapping opens the sheet.
 - [ ] **SleepTimerSheet picker** — 3-column pill grid (Off / 5 / 15 / 30 / 45 / 60) with status panel + dismissible via swipe.

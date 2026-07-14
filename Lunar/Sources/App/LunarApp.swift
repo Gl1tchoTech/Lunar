@@ -23,6 +23,9 @@ struct LunarApp: App {
     /// Sleep timer observable.
     @State private var sleepTimer = SleepTimer()
 
+    /// User playback preferences (crossfade + gapless).
+    @State private var playbackSettings = PlaybackSettings()
+
     /// App Theme settings (System / Light / Dark + accent color).
     @State private var appThemeSettings = AppThemeSettings()
 
@@ -43,11 +46,13 @@ struct LunarApp: App {
             LunarAppCoordinator(
                 audioSession: appAudioSession,
                 audioEngine: audioEngine,
-                sleepTimer: sleepTimer
+                sleepTimer: sleepTimer,
+                playbackSettings: playbackSettings
             )
             .environment(theme)
             .environment(audioEngine)
             .environment(sleepTimer)
+            .environment(playbackSettings)
             .environment(appThemeSettings)
             .preferredColorScheme(appThemeSettings.mode.colorScheme)
             .tint(appThemeSettings.accent.color)
@@ -80,6 +85,7 @@ private struct LunarAppCoordinator: View {
     let audioSession: AppAudioSession
     let audioEngine: AudioEngine
     let sleepTimer: SleepTimer
+    let playbackSettings: PlaybackSettings
 
     /// Optional callback the host can use to log a song's natural
     /// completion via `LibraryService.logListenEvent`. Step 5 wires
@@ -99,6 +105,24 @@ private struct LunarAppCoordinator: View {
                 }
                 if let cb = onSongFinished {
                     audioEngine.onSongFinished = cb
+                }
+
+                // Mirror PlaybackSettings values into the live
+                // AudioEngine. First the warm-up push (uses the
+                // settings' stored values, not the engine's compile-
+                // time defaults). Then a closure wired into
+                // `playbackSettings.onChange` so future slider/toggle
+                // edits in the Settings sheet propagate instantly.
+                audioEngine.crossfadeDurationSeconds =
+                    playbackSettings.crossfadeDurationSeconds
+                audioEngine.gaplessEnabled =
+                    playbackSettings.gaplessEnabled
+                playbackSettings.onChange = { [weak audioEngine] in
+                    guard let audioEngine else { return }
+                    audioEngine.crossfadeDurationSeconds =
+                        playbackSettings.crossfadeDurationSeconds
+                    audioEngine.gaplessEnabled =
+                        playbackSettings.gaplessEnabled
                 }
             }
     }

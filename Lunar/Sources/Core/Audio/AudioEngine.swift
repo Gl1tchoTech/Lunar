@@ -66,6 +66,25 @@ final class AudioEngine: AudioPlayerInterface {
 
     // MARK: - Timers / subscriptions
 
+    // MARK: - Engine-mirrored playback preferences
+    //
+    // Mirrored from `PlaybackSettings` at launch and on every
+    // `onChange` callback via `LunarAppCoordinator`. Public-read so
+    // tests can verify sync; writes happen through that hook (not
+    // direct property sets from views).
+
+    /// Default crossfade duration for queued `next()` transitions.
+    /// 0 = direct cut (gapless). Stepped 0…12 s in 0.5 s increments
+    /// via `PlaybackSettings.crossfadeStep`.
+    var crossfadeDurationSeconds: Double = 6
+
+    /// When true, `next()` performs a continuous swap so there is no
+    /// perceptible silence between songs (with optional crossfade
+    /// overlap driven by `crossfadeDurationSeconds`). When false,
+    /// `next()` stops the current node + reloads the next — a small
+    /// gap separates tracks.
+    var gaplessEnabled: Bool = true
+
     private var session: AppAudioSession?
     private var sessionEvents: AnyCancellable?
     private var progressTimer: AnyCancellable?
@@ -179,7 +198,19 @@ final class AudioEngine: AudioPlayerInterface {
         let request = queue[queueIndex]
         isTransitioning = true
         Task {
-            await self.send(.crossfade(request, durationSeconds: self.crossfadeDurationSeconds))
+            if self.gaplessEnabled {
+                // Crossfade path: 0 s = pure swap-with-no-gap (Δ on
+                // `rampCrossfade` handles the divide-by-zero), > 0 s =
+                // classic overlap fade.
+                await self.send(.crossfade(
+                    request,
+                    durationSeconds: self.crossfadeDurationSeconds
+                ))
+            } else {
+                // Cut-and-reload path: brief silence between songs.
+                await self.send(.load(request))
+                self.play()
+            }
             self.isTransitioning = false
         }
     }
@@ -221,10 +252,6 @@ final class AudioEngine: AudioPlayerInterface {
     }
 
     // MARK: - Queue
-
-    /// Default crossfade duration for queued `next()` transitions.
-    /// Configurable later via Settings (Step 5).
-    private let crossfadeDurationSeconds: Double = 6
 
     /// Replace the in-memory queue and start playback at `startIndex`.
     /// Subsequent `next()` / `previous()` / song-finished events walk
@@ -349,6 +376,19 @@ final class AudioEngine: AudioPlayerInterface {
         to incoming: AVAudioPlayerNode
     ) {
         crossfadeTimer?.cancel()
+
+        // Duration ≤ 0 (e.g. user set crossfade slider to Off) — no
+        // timer needed. Snap outgoing to silent and incoming to full
+        // volume, stop the outgoing node, and bail. Avoids
+        // divide-by-zero in `elapsed / duration` below when duration
+        // is exactly 0.
+        guard duration > 0 else {
+            outgoing.volume = 0
+            incoming.volume = 1
+            outgoing.stop()
+            return
+        }
+
         let startTime = CFAbsoluteTimeGetCurrent()
         crossfadeTimer = Timer.publish(every: crossfadeTimerInterval, on: .main, in: .common)
             .autoconnect()

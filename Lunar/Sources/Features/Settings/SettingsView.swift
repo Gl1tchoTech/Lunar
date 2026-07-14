@@ -20,7 +20,7 @@ struct SettingsView: View {
                     row("App Theme",          systemImage: "paintpalette", to: AppThemeView())
                     sleepTimerRow
                     row("Equalizer",          systemImage: "slider.vertical.3", to: equalizerStub)
-                    row("Playback Setting",   systemImage: "gear",         to: playbackStub)
+                    row("Playback Setting",   systemImage: "gear",         to: PlaybackSettingsView())
                     row("Language",           systemImage: "globe",        to: languageStub)
                 }
 
@@ -129,14 +129,6 @@ struct SettingsView: View {
         )
     }
 
-    private var playbackStub: some View {
-        StubPage(
-            title: "Playback Setting",
-            message: "Crossfade duration, gapless playback, and queue controls. Step 5 Tier 2.",
-            systemImage: "gear"
-        )
-    }
-
     private var languageStub: some View {
         StubPage(
             title: "Language",
@@ -169,5 +161,6 @@ struct StubPage: View {
     SettingsView()
         .environment(AppThemeSettings())
         .environment(SleepTimer())
+        .environment(PlaybackSettings())
         .preferredColorScheme(.dark)
 }
