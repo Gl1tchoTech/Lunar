@@ -6,18 +6,23 @@ All notable changes to **Lunar** are documented here. The format follows
 
 ## [Unreleased]
 
-### Planned (Step 3+)
-- AVAudioEngine-based playback: real DSP, gapless, crossfade
-- 10-band EQ view (data layer already shipped in 0.2.0)
-- Lyrics (.lrc manual import)
-- Sleep timer
-- Smart playlists (Most Played / Recently Played) — Predicates already shipped in 0.2.0
-- Full Now Playing screen + sheets
-- Settings rows (Player Style · App Theme · Equalizer · Playback · Language · Backup)
-- Library tabs: Songs sorts, Artists / Albums / Source
-- Playlist tab + Create flow
-- Import: Local Files · Wi-Fi Drive · Cloud
-- Browse: downloader / streamer
+### Step 3 — Core library layer + Audio engine + Library Songs tab (in progress)
+
+- **`MusicLibrary`** (`Lunar/Sources/Core/Library/MusicLibrary.swift`) — sandbox-aware helpers: `ensureLibraryDirectory()`, `absoluteURL(forFileName:)` rebuilds the `Song.fileName`-→-`URL` mapping under `Application Support/Music/`.
+- **`LibraryService`** (`Lunar/Sources/Core/Library/LibraryService.swift`) — `@MainActor` SwiftData façade: `toggleFavorite`, `createPlaylist`, `add`/`remove` from playlist, `delete`, `logListenEvent(songID:)`, smart-playlist queries (`favoriteSongs`, `mostPlayedSongs`, `recentlyPlayedSongs`).
+- **`AudioPlayerInterface`** (`Lunar/Sources/Core/Audio/PlayerProtocol.swift`) — `@MainActor` protocol + `PlaybackCommand` enum + `Sendable` `PlaybackRequest`. Views + tests + fakes talk through one API surface.
+- **`AudioEngine`** (`Lunar/Sources/Core/Audio/AudioEngine.swift`) — real `AVAudioEngine`-backed player, `@MainActor @Observable`. **Frozen graph** (`playerA / playerB / timePitch / eq / mainMixer`) built once at init; 0.1 s progress ticker; 60 Hz crossfade volume ramp; off-thread `AVAudioFile` decode via `Task.detached`.
+- **`EQController`** (`Lunar/Sources/Core/Audio/EQController.swift`) — 10-band ISO EQ with gain clamp ±12 dB; `makeUnit()`, `apply(bands:to:)`, `bypass(_:)`.
+- **`SleepTimer`** (`Lunar/Sources/Core/Audio/SleepTimer.swift`) — `@MainActor @Observable` countdown for 5 / 15 / 30 / 45 / 60 minutes or Off; persisted to `UserDefaults`; fires `onExpire` callback.
+- **`AppAudioSession`** (`Lunar/Sources/Core/Audio/AppAudioSession.swift`) — `.playback` category + interruption + route-change observers pushed through `PassthroughSubject<AudioEvent, Never>`. `.receive(on: DispatchQueue.main)` keeps handlers on the main actor.
+- **`LunarApp`** + **`LunarAppCoordinator`** — inject `AudioEngine` + `SleepTimer` into the SwiftUI environment. Private coordinator handles the once-only `audioEngine.attach(session:)` + `sleepTimer.onExpire → engine.pause()` glue in its `.task` modifier.
+- **`LibraryView` refactor** — Step 1 placeholder replaced with a working **Songs** tab: tab strip (Songs · Artists · Albums · Source), sort-menu chip (`↑↓ Artist name (N)`), lime shuffle + play pills, `@Query(Song)` rows with swipe + context menu, empty state. Artists / Albums / Source remain stubs.
+- New components: `SongRow` (artwork + title + artist + duration), `SortMenu` (sheet with two grouped sections + checkmarks), `LibraryActionRow` (shuffle / play pills).
+- Tests: `LibraryServiceTests` (8), `AudioEngineControllerTests` with `FakeAudioEngine` + `EQController` (9).
+
+## [0.3.0] — Step 3: Core library + audio engine + Library Songs tab
+
+(verified on push)
 
 ## [0.2.0] — Step 2: SwiftData layer
 

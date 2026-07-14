@@ -103,23 +103,35 @@ All themes share the same information architecture — only the visual chrome ch
 
 ## 🛣 Roadmap
 
-- [x] Project scaffold (compile-ready)
-- [x] 5-tab shell + iPad split view + empty states
+### ✅ Step 1 — Scaffold (`af3708a`)
+- [x] Project scaffold (compile-ready) · XcodeGen
+- [x] 5-tab shell · iPad split view · empty states
 - [x] Design tokens & 6 Player Themes
 - [x] SideStore unsigned-IPA workflow
+
+### ✅ Step 2 — SwiftData foundation (`67705ef`)
 - [x] **SwiftData models** (Song · Album · Artist · Playlist · ListenEvent · EQPreset)
-- [x] **ModelContainer wired into `LunarApp` + first-launch seeding of 13 EQ presets**
+- [x] **`ModelContainer` wired into `LunarApp` + first-launch seeding of 13 EQ presets**
 - [x] **Model tests** — empty-store, init defaults, schema round-trip, relationships
-- [ ] `MusicLibrary` helper (resolve relative `fileName` → sandbox URL)
-- [ ] `LibraryService` façade for mutations (toggleFavorite, createPlaylist)
+
+### ✅ Step 3 — Core library + Audio engine + Library Songs tab (next push)
+- [x] **`MusicLibrary`** — resolve relative `fileName` → sandbox URL + diagnostics
+- [x] **`LibraryService`** — SwiftData mutation façade
+- [x] **`AudioPlayerInterface`** protocol + `PlaybackCommand` / `PlaybackRequest`
+- [x] **`AudioEngine`** — `AVAudioEngine` + frozen player-graph + 0.1 s progress + 60 Hz crossfade
+- [x] **`EQController`** — 10-band ISO EQ with ±12 dB clamp
+- [x] **`SleepTimer`** — 5 / 15 / 30 / 45 / 60 + Off (UserDefaults)
+- [x] **`AppAudioSession`** — `.playback` category + interruption / route-change observers
+- [x] **`LibraryView` Songs tab** — sort menu + shuffle / play pills + `@Query` rows + context menu + empty state
+- [x] **`LibraryServiceTests`** (8) + **`AudioEngineControllerTests`** + `FakeAudioEngine` + `EQController` (9)
+
+### ⏭ Step 4 onwards
 - [ ] `PlaylistEntry` join entity for ordered playlists (drag-to-reorder)
-- [ ] AVAudioEngine + 10-band EQ + crossfade + sleep timer
-- [ ] Library: Songs / Artists / Albums / Source tabs
-- [ ] Sort menu + select mode + song menu
+- [ ] Library: Artists / Albums / Source tabs (Artists + Albums + Source currently stubs)
 - [ ] Playlist tab + smart playlists + create flow
 - [ ] Import: Local Files · Wi-Fi Drive · Cloud
 - [ ] Browse: downloader/streamer (placeholder today)
-- [ ] Settings: Player Style · App Theme · EQ · Playback · Language
+- [ ] Settings: Player Style · App Theme · EQ view · Playback · Language · Backup
 - [ ] Now Playing + sheets (lyrics, playback speed, song info, song menu, AirPlay)
 - [ ] Final QA + sideload test
 
