@@ -2,7 +2,15 @@ import SwiftUI
 
 /// Settings tab. Row-driven nav. Most destinations are still stubs
 /// (Equalizer/Playback/Language/About) — replaced in Phase 5.
+///
+/// **Sleep Timer** is the only Settings row that is fully wired. It
+/// pushes the same `SleepTimerSheet` used by the moon chip in Now
+/// Playing, so behaviour stays consistent across surfaces.
 struct SettingsView: View {
+
+    @Environment(SleepTimer.self) private var sleepTimer
+
+    @State private var presentingSleepSheet = false
 
     var body: some View {
         NavigationStack {
@@ -10,6 +18,7 @@ struct SettingsView: View {
                 Section {
                     row("Player Style",       systemImage: "tshirt",       to: PlayerStyleView())
                     row("App Theme",          systemImage: "paintpalette", to: AppThemeView())
+                    sleepTimerRow
                     row("Equalizer",          systemImage: "slider.vertical.3", to: equalizerStub)
                     row("Playback Setting",   systemImage: "gear",         to: playbackStub)
                     row("Language",           systemImage: "globe",        to: languageStub)
@@ -60,9 +69,12 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .toolbarColorScheme(.dark, for: .navigationBar)
         }
+        .sheet(isPresented: $presentingSleepSheet) {
+            SleepTimerSheet()
+        }
     }
 
-    // MARK: - Row helper
+    // MARK: - Row helpers
 
     private func row<Destination: View>(
         _ title: String,
@@ -77,14 +89,42 @@ struct SettingsView: View {
         }
     }
 
+    /// Sleep Timer uses a Button + sheet (not a NavigationLink) so the
+    /// same `SleepTimerSheet` powers both this row and the moon chip
+    /// in Now Playing. Trailing value shows the current duration.
+    private var sleepTimerRow: some View {
+        Button {
+            presentingSleepSheet = true
+        } label: {
+            HStack {
+                Label("Sleep Timer", systemImage: "moon")
+                    .foregroundStyle(ColorTokens.textPrimary)
+                Spacer()
+                Text(sleepTimerTrailingLabel)
+                    .font(Typography.subhead)
+                    .foregroundStyle(ColorTokens.textSecondary)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(ColorTokens.textTertiary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var sleepTimerTrailingLabel: String {
+        if sleepTimer.durationMinutes == 0 { return "Off" }
+        return "\(sleepTimer.durationMinutes) min"
+    }
+
     // MARK: - Stubbed destination views
     // Real sub-views (Player Style + App Theme) live in `Sources/Settings/`.
-    // The remainder are placeholders Step 5 will replace.
+    // The remainder are placeholders future tiers will replace.
 
     private var equalizerStub: some View {
         StubPage(
             title: "Equalizer",
-            message: "10-band DSP via AVAudioUnitEQ, with presets and reverb. Step 5.",
+            message: "10-band DSP via AVAudioUnitEQ, with presets and reverb. Step 5 Tier 2.",
             systemImage: "slider.vertical.3"
         )
     }
@@ -92,7 +132,7 @@ struct SettingsView: View {
     private var playbackStub: some View {
         StubPage(
             title: "Playback Setting",
-            message: "Crossfade duration, gapless playback, and sleep timer controls. Step 5.",
+            message: "Crossfade duration, gapless playback, and queue controls. Step 5 Tier 2.",
             systemImage: "gear"
         )
     }
@@ -128,5 +168,6 @@ struct StubPage: View {
 #Preview {
     SettingsView()
         .environment(AppThemeSettings())
+        .environment(SleepTimer())
         .preferredColorScheme(.dark)
 }

@@ -9,6 +9,9 @@ struct NowPlayingView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AudioEngine.self) private var engine
     @Environment(PlayerThemeManager.self) private var themeManager
+    @Environment(SleepTimer.self) private var sleepTimer
+
+    @State private var presentingSleepSheet = false
 
     var body: some View {
         let palette = themeManager.palette
@@ -29,12 +32,15 @@ struct NowPlayingView: View {
             .padding(.vertical, Spacing.xl)
         }
         .preferredColorScheme(.dark)
+        .sheet(isPresented: $presentingSleepSheet) {
+            SleepTimerSheet()
+        }
     }
 
     // MARK: - Top chrome
 
     private func dismissChrome(palette: PlayerThemePalette) -> some View {
-        HStack {
+        HStack(spacing: Spacing.s) {
             Button {
                 dismiss()
             } label: {
@@ -44,8 +50,16 @@ struct NowPlayingView: View {
                     .frame(width: 44, height: 44)
             }
             .accessibilityLabel("Dismiss Now Playing")
+
             Spacer()
-            // track number / queue position pulled later (Step 5: queue sheet)
+
+            SleepTimerChip(
+                palette: palette,
+                isActive: sleepTimer.isActive,
+                secondsRemaining: sleepTimer.secondsRemaining,
+                onTap: { presentingSleepSheet = true }
+            )
+
             if engine.currentQueueIndex >= 0 && engine.queueSize > 1 {
                 Text("\(engine.currentQueueIndex + 1) / \(engine.queueSize)")
                     .font(Typography.caption1)
@@ -86,4 +100,54 @@ struct NowPlayingView: View {
                 .lineLimit(1)
         }
     }
+}
+
+// MARK: - SleepTimerChip
+
+/// Pill-shaped button in the Now Playing top chrome. Renders the moon
+/// SF Symbol plus an optional countdown string. Tapping opens the
+/// `SleepTimerSheet`. When the timer is off, only the icon shows.
+private struct SleepTimerChip: View {
+
+    let palette: PlayerThemePalette
+    let isActive: Bool
+    let secondsRemaining: Int
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 4) {
+                Image(systemName: isActive ? "moon.fill" : "moon")
+                    .font(.system(size: 14, weight: .semibold))
+                if isActive {
+                    Text(format(secondsRemaining))
+                        .font(Typography.caption1)
+                        .monospacedDigit()
+                }
+            }
+            .foregroundStyle(isActive ? palette.accent : palette.primaryText)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                Capsule().fill(palette.railBackground)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isActive ? "Sleep timer — \(format(secondsRemaining)) remaining" : "Set sleep timer")
+        .accessibilityHint("Opens the sleep timer picker")
+    }
+
+    private func format(_ seconds: Int) -> String {
+        let m = seconds / 60
+        let s = seconds % 60
+        return String(format: "%d:%02d", m, s)
+    }
+}
+
+#Preview {
+    NowPlayingView()
+        .environment(AudioEngine())
+        .environment(PlayerThemeManager())
+        .environment(SleepTimer())
+        .preferredColorScheme(.dark)
 }

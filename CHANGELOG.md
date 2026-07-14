@@ -6,6 +6,16 @@ All notable changes to **Lunar** are documented here. The format follows
 
 ## [Unreleased]
 
+### Step 5 — Tier 2 Part 2: Sleep Timer UI in Now Playing + Settings
+
+- **`SleepTimer.isActive`** (`Lunar/Sources/Core/Audio/SleepTimer.swift`) — new computed property `var isActive: Bool { secondsRemaining > 0 }`. Single source of truth for the "timer is running" check; replaces fragile "durationMinutes > 0" inference from views.
+- **`SleepTimer` test-only hatch** — `#if DEBUG` extension exposes `_debugStart(seconds:)` so `SleepTimerTests` can drive a 1-second countdown for deterministic verification of the ticker + `onExpire` callback. Stripped from Release builds.
+- **`SleepTimerSheet`** (`Lunar/Sources/Features/NowPlaying/SleepTimerSheet.swift`) — new sheet-style picker: 56pt status panel (moon SF Symbol + countdown or "Off" headline) above a 3-column pill grid (Off / 5 / 15 / 30 / 45 / 60 min). Active pill uses the player-theme accent fill. Selecting dims the sheet in 180ms then dismisses. `presentationDetents([.medium, .large])` for flexible heights. Reads `SleepTimer` + `PlayerThemeManager` from the environment so the chips tint match whichever player theme is active.
+- **`SleepTimerChip`** inside `NowPlayingView` — pill-shaped button in the top chrome (right of the dismiss arrow). Renders the moon SF Symbol plus a monospaced `m:ss` countdown while the timer is active; collapses to just the icon when off. Capsule background reads `palette.railBackground`, foreground reads `palette.accent` (active) or `palette.primaryText` (off). Tapping opens the same `SleepTimerSheet`.
+- **`NowPlayingView` rewrite** — top chrome HStack now hosts [dismiss · spacer · SleepTimerChip · queue-counter]. `.sheet(isPresented: $presentingSleepSheet)` modifier presents `SleepTimerSheet` above the fullScreenCover so dismissing Now Playing tears down the sheet correctly.
+- **`SettingsView ▸ Sleep Timer` row** — Button-styled row between **App Theme** and **Equalizer**. Trailing shows "Off" / "5 min" / etc. Tracking the live `SleepTimer.durationMinutes`. Tapping toggles `presentingSleepSheet` so the same SleepTimerSheet opens — visual parity with the Now Playing moon chip.
+- **`SleepTimerTests`** (`Tests/LunarTests/SleepTimerTests.swift`) — 11 tests covering: `isActive` invariants; UserDefaults restore on init; `select(Five)` / `select(0)` / `select(same)` semantics; `cancel` keeps the user's choice but resets the countdown; ticker decrements + fires `onExpire` after a 1-second `_debugStart`; cancelled ticker does NOT fire `onExpire`.
+
 ### Step 5 — Tier 1: Import → Local Files + ID3 / iTunes / Vorbis extraction
 
 - **`AudioMetadataExtractor`** (`Lunar/Sources/Core/Library/AudioMetadataExtractor.swift`) — nonisolated `AVAsset.load` helper. Reads title / artist / album / track number / year (`commonKeyCreationDate`) / duration / bitrate (`AVAssetTrack.estimatedDataRate`) / sample rate / bit depth (`AudioStreamBasicDescription.mBitsPerChannel`) + embedded artwork (`AVMetadataItem.dataValue` — handles MP4 iTunes-artwork `NSDictionary` wraps transparently). Returns a `Sendable` `ImportedTrackPayload`. All values fall back to `nil` or a sensible placeholder (file stem → title, `Unknown Artist`) when tags are absent.

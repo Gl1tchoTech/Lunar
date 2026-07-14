@@ -22,9 +22,14 @@ final class SleepTimer {
         didSet { UserDefaults.standard.set(durationMinutes, forKey: Self.storageKey) }
     }
 
-    /// Seconds remaining until pause. `0` when off. Read by the UI to
-    /// render the "Sleep in 4:32" badge.
+    /// Seconds remaining until pause. `0` when off or paused. Read by
+    /// the UI to render the "Sleep in 4:32" badge.
     private(set) var secondsRemaining: Int = 0
+
+    /// True while a countdown is in flight. Computed so views and
+    /// tests get a single source of truth (no separate flag to
+    /// accidentally drift out of sync with `secondsRemaining`).
+    var isActive: Bool { secondsRemaining > 0 }
 
     /// Invoked **once** when the countdown hits zero. Caller wires it
     /// to `AudioEngine.pause()`. Using a closure keeps `SleepTimer`
@@ -83,3 +88,22 @@ final class SleepTimer {
         }
     }
 }
+
+// MARK: - Test-only API
+//
+// Compiled into Debug builds (including the test bundle). Never
+// reachable from a Release build. Lets the test suite drive a 1-second
+// countdown for deterministic verification of `onExpire` + ticker
+// lifecycle without exposing private state through `internal`.
+#if DEBUG
+extension SleepTimer {
+    /// Inject a sub-second countdown. Production code uses
+    /// `select(minutes:)` which only accepts integer minutes.
+    func _debugStart(seconds: Int) {
+        guard seconds > 0 else { return }
+        durationMinutes = 0
+        secondsRemaining = seconds
+        startIfNeeded()
+    }
+}
+#endif

@@ -125,6 +125,12 @@ All themes share the same information architecture — only the visual chrome ch
 - [x] **`LibraryView` Songs tab** — sort menu + shuffle / play pills + `@Query` rows + context menu + empty state
 - [x] **`LibraryServiceTests`** (8) + **`AudioEngineControllerTests`** + `FakeAudioEngine` + `EQController` (9)
 
+### ✅ Step 5 — Tier 2 Part 2: Sleep Timer UI (`pending`)
+- [ ] **Moon chip in Now Playing top chrome** — pill with countdown next to the dismiss arrow (Cyber Neon accent when active). Tapping opens the sheet.
+- [ ] **SleepTimerSheet picker** — 3-column pill grid (Off / 5 / 15 / 30 / 45 / 60) with status panel + dismissible via swipe.
+- [ ] **Settings ▸ Sleep Timer row** — same `SleepTimerSheet` as Now Playing, plus trailing value showing current duration.
+- [ ] **SleepTimer.isActive computed** + `#if DEBUG` test hatch (`_debugStart(seconds:)`) + 11 `SleepTimerTests`.
+
 ### ✅ Step 4 — Feature wiring (next push)
 - [x] **Library sub-tabs** — Artists (circular portraits), Albums (square covers), Source (yellow folder rows). Each row pushes an Album/Artist detail view.
 - [x] **Now Playing full-screen cover** — Player-Theme gradient background, large artwork, title/artist, scrub bar, 5-button transport row (shuffle / prev / play-pause / next / repeat). Launched from Mini Player.
