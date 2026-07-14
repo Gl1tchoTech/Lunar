@@ -1,0 +1,90 @@
+name: Build iOS IPA (unsigned)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/**'
+      - 'Lunar/**'
+      - 'project.yml'
+      - 'Tests/**'
+      - 'Scripts/**'
+
+concurrency:
+  group: lunar-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-unsigned-ipa:
+    name: Build unsigned IPA
+    runs-on: macos-14
+    timeout-minutes: 45
+
+    env:
+      SCHEME: Lunar
+      CONFIG: Release
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 15.4
+        run: |
+          if [ -d "/Applications/Xcode_15.4.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+          fi
+          xcodebuild -version
+          swift --version
+
+      - name: Install XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Run unit + snapshot tests (Debug on iPhone 15 simulator)
+        # We deliberately do NOT pipe to xcpretty here: a non-zero exit from
+        # xcodebuild must fail the job. xcpretty is not pre-installed on
+        # macos-14 runners and using `|| true` would silently mask failures.
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project Lunar.xcodeproj \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,name=iPhone 15,OS=latest" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            test
+
+      - name: Build app (Release, generic iOS, unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project Lunar.xcodeproj \
+            -scheme "$SCHEME" \
+            -configuration "$CONFIG" \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            ONLY_ACTIVE_ARCH=NO \
+            build
+
+      - name: Package as unsigned IPA
+        run: bash Scripts/build-ipa.sh "$CONFIG"
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lunar-unsigned-ipa
+          path: build/Lunar.ipa
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,55 @@
+# ── macOS ─────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ── Xcode ─────────────────────────────────────────────────────────
+build/
+DerivedData/
+*.xcuserstate
+*.xcuserdatad/
+*.xcscmblueprint
+*.xccheckout
+*.xcscheme
+*.moved-aside
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+xcuserdata/
+*.mobileprovision
+
+# XcodeGen-generated project (regenerated from project.yml)
+*.xcodeproj/
+*.xcworkspace/
+
+# ── Swift Package Manager ─────────────────────────────────────────
+.build/
+.swiftpm/
+Package.resolved
+
+# ── Output artifacts ──────────────────────────────────────────────
+*.ipa
+*.app
+dist/
+output/
+
+# ── Fastlane (optional) ───────────────────────────────────────────
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# ── IDE ───────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── Logs ──────────────────────────────────────────────────────────
+*.log
+
+# ── Local config ──────────────────────────────────────────────────
+.env
+.env.local
