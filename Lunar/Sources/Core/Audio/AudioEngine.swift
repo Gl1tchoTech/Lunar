@@ -36,11 +36,27 @@ final class AudioEngine: AudioPlayerInterface {
     /// `Song` in the main context for UI display.
     private(set) var currentSongID: PersistentIdentifier?
 
+    /// In-memory playback queue. Holds the full ordered list of upcoming
+    /// requests plus a pointer to the one we're playing. Replaced
+    /// whenever the user starts a new "Play All" / "Play Song" / "Shuffle".
+    private var queue: [PlaybackRequest] = []
+    private var queueIndex: Int = 0
+
     /// Pre-decoded file used by the active player node. `nil` after
     /// `pause()` / `stop()`. Cached so a `play()` after pause
     /// doesn't need to re-read disk.
     private var currentFile: AVAudioFile?
     private var currentNode: AVAudioPlayerNode
+
+    /// Set true while a `.load` or `.crossfade` is in flight. Prevents
+    /// rapid `next()` / `previous()` taps from queuing two crossfade
+    /// commands on top of each other.
+    private var isTransitioning: Bool = false
+
+    /// Optional callback fired when a song naturally completes
+    /// (not when the user manually pauses). The host can use this
+    /// to log a `ListenEvent` via `LibraryService.logListenEvent`.
+    var onSongFinished: ((PlaybackRequest, TimeInterval) -> Void)?
 
     private let engine = AVAudioEngine()
     private let playerA = AVAudioPlayerNode()
@@ -145,18 +161,49 @@ final class AudioEngine: AudioPlayerInterface {
         state.isPlaying ? pause() : play()
     }
 
+    /// Advance to the **next queued song**. If at the end of the
+    /// queue, pauses the engine and resets the current time. Internally
+    /// fires `Task { await ... }` so the public method remains sync —
+    /// callers (transport buttons) don't have to `await`.
+    ///
+    /// Gated by `isTransitioning` so rapid taps don't pile up multiple
+    /// in-flight crossfade commands.
     func next() {
-        // Real queue logic will arrive in Step 5 (Now Playing + queue UI).
-        // For now we expose the hook so upcoming `setNext(songID:)` can
-        // hand off the next file here.
-        pause()
-        state.currentTime = 0
+        guard !isTransitioning else { return }
+        guard queueIndex + 1 < queue.count else {
+            pause()
+            state.currentTime = 0
+            return
+        }
+        queueIndex += 1
+        let request = queue[queueIndex]
+        isTransitioning = true
+        Task {
+            await self.send(.crossfade(request, durationSeconds: self.crossfadeDurationSeconds))
+            self.isTransitioning = false
+        }
     }
 
+    /// Walk back. If we're deeper than 3 seconds into the current
+    /// song, restart it instead of going to the previous.
     func previous() {
-        // Step 5 will use the song history for "play previous".
-        guard state.currentTime > 3 else { return }
-        seek(to: 0)
+        guard !isTransitioning else { return }
+        if state.currentTime > 3 {
+            seek(to: 0)
+            return
+        }
+        guard queueIndex > 0 else {
+            seek(to: 0)
+            return
+        }
+        queueIndex -= 1
+        let request = queue[queueIndex]
+        isTransitioning = true
+        Task {
+            await self.send(.load(request))
+            self.play()
+            self.isTransitioning = false
+        }
     }
 
     func seek(to time: TimeInterval) {
@@ -171,6 +218,52 @@ final class AudioEngine: AudioPlayerInterface {
         let clamped = min(1.0, max(0.0, volume))
         engine.mainMixerNode.outputVolume = clamped
         state.volume = clamped
+    }
+
+    // MARK: - Queue
+
+    /// Default crossfade duration for queued `next()` transitions.
+    /// Configurable later via Settings (Step 5).
+    private let crossfadeDurationSeconds: Double = 6
+
+    /// Replace the in-memory queue and start playback at `startIndex`.
+    /// Subsequent `next()` / `previous()` / song-finished events walk
+    /// this queue.
+    func playQueue(_ requests: [PlaybackRequest], startIndex: Int = 0) {
+        guard !requests.isEmpty else { return }
+        let clamped = max(0, min(startIndex, requests.count - 1))
+        queue = requests
+        queueIndex = clamped
+        let first = queue[clamped]
+        Task { await self.send(.load(first)); self.play() }
+    }
+
+    /// Append a song to play **after the current song**, then continue
+    /// through the rest of the queue. Safe to call when the queue is
+    /// empty — in that case the request becomes the entire queue
+    /// starting at index 0.
+    func enqueueNext(_ request: PlaybackRequest) {
+        if queue.isEmpty {
+            queue = [request]
+            queueIndex = 0
+            // Don't auto-play; user expects to keep listening to current song
+            // (or silence) until they tap Play. Caller can call `play()`
+            // separately if needed.
+            return
+        }
+        let insertAt = max(queueIndex + 1, queue.count)
+        queue.insert(request, at: insertAt)
+    }
+
+    /// Total queue size + current index, exposed for the Now Playing UI.
+    var queueSize: Int { queue.count }
+    var currentQueueIndex: Int { queue.isEmpty ? -1 : queueIndex }
+
+    /// The full queue (read-only projection), exposed so the Now Playing
+    /// UI can show upcoming tracks.
+    var upcomingRequests: [PlaybackRequest] {
+        guard queueIndex >= 0, queueIndex + 1 < queue.count else { return [] }
+        return Array(queue[(queueIndex + 1)...])
     }
 
     // MARK: - Load + crossfade
@@ -273,10 +366,19 @@ final class AudioEngine: AudioPlayerInterface {
     }
 
     private func handleNextNodeCompleted() {
-        // No auto-advance to a real queue yet (Step 5). Just stop cleanly.
+        // Auto-advance: if the queue has more, step into `next()`.
+        // Otherwise, end the session cleanly.
         progressTimer?.cancel()
-        state.isPlaying = false
-        state.currentTime = 0
+        let hasMore = queueIndex + 1 < queue.count
+        let validIndex = queueIndex >= 0 && queueIndex < queue.count
+        if hasMore, validIndex {
+            let finishedSong = queue[queueIndex]
+            onSongFinished?(finishedSong, state.duration)
+            next()
+        } else {
+            state.isPlaying = false
+            state.currentTime = 0
+        }
     }
 
     // MARK: - Progress / state

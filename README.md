@@ -125,14 +125,25 @@ All themes share the same information architecture — only the visual chrome ch
 - [x] **`LibraryView` Songs tab** — sort menu + shuffle / play pills + `@Query` rows + context menu + empty state
 - [x] **`LibraryServiceTests`** (8) + **`AudioEngineControllerTests`** + `FakeAudioEngine` + `EQController` (9)
 
-### ⏭ Step 4 onwards
+### ✅ Step 4 — Feature wiring (next push)
+- [x] **Library sub-tabs** — Artists (circular portraits), Albums (square covers), Source (yellow folder rows). Each row pushes an Album/Artist detail view.
+- [x] **Now Playing full-screen cover** — Player-Theme gradient background, large artwork, title/artist, scrub bar, 5-button transport row (shuffle / prev / play-pause / next / repeat). Launched from Mini Player.
+- [x] **Mini-player overlay** — pill docked above the tab bar on Library, Playlist, and Import. Hidden until a song plays. Tap → opens Now Playing.
+- [x] **Playlist tab full rewrite** — `Most Played` / `Recently Played` gradient hero tiles, smart-playlist song counts from `Song.playCount` / `Song.lastPlayed`, `My Local Playlist (N)` count, big lime `+ Create New` alert, list of user playlist rows (with `My Favorites` heart glyph). Tap any tile / row → `PlaylistDetailView`.
+- [x] **AudioEngine queue** — in-memory `[PlaybackRequest]`, `enqueueNext`, `playQueue`, `next()`, `previous()` walking the queue, automatic advance in `handleNextNodeCompleted`. Race-gate via `isTransitioning`.
+- [x] **Settings polish** — `PlayerStyleView` (six theme preview cards, tap to apply), `AppThemeView` (System / Light / Dark segmented picker + 3×2 accent swatch grid persisted via `AppThemeSettings`). Equalizer / Playback / Language / About stay stub views for Step 5.
+
+### ⏭ Step 5 onwards
 - [ ] `PlaylistEntry` join entity for ordered playlists (drag-to-reorder)
-- [ ] Library: Artists / Albums / Source tabs (Artists + Albums + Source currently stubs)
-- [ ] Playlist tab + smart playlists + create flow
-- [ ] Import: Local Files · Wi-Fi Drive · Cloud
+- [ ] Equalizer: real 10-band slider view + reverb
+- [ ] Playback Setting: crossfade duration + gapless toggles + gapless compliance
+- [ ] Lyrics (`.lrc` manual import) + editor
+- [ ] Sleep-timer UI inside Now Playing
+- [ ] Song Info sheet + Song Menu (rename, add to playlist, share)
+- [ ] Sleep Timer picker (5/15/30/45/60 + Off)
+- [ ] Import tab: Local Files · Wi-Fi Drive · Other Apps · Cloud
 - [ ] Browse: downloader/streamer (placeholder today)
-- [ ] Settings: Player Style · App Theme · EQ view · Playback · Language · Backup
-- [ ] Now Playing + sheets (lyrics, playback speed, song info, song menu, AirPlay)
+- [ ] Feedback / Rate Us / Privacy Policy destinations
 - [ ] Final QA + sideload test
 
 ---

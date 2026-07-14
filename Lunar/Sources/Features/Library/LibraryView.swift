@@ -8,14 +8,15 @@ import SwiftData
 /// minimal placeholders until their dedicated steps (see plan).
 struct LibraryView: View {
 
-    @Environment(\.modelContext) private var modelContext
-    @Environment(AudioEngine.self) private var audioEngine
+@Environment(\.modelContext) private var modelContext
+@Environment(AudioEngine.self) private var audioEngine
 
-    @State private var libraryService: LibraryService?
-    @State private var sortKey: LibrarySortKey = .artistName
-    @State private var direction: SortDirection = .ascending
-    @State private var showingSortMenu = false
-    @State private var selectedTab: LibraryListTab = .songs
+@State private var libraryService: LibraryService?
+@State private var sortKey: LibrarySortKey = .artistName
+@State private var direction: SortDirection = .ascending
+@State private var showingSortMenu = false
+@State private var selectedTab: LibraryListTab = .songs
+@State private var presentingNowPlaying = false
 
     // Songs query — sort key + direction drive the SortDescriptor.
     @Query private var songs: [Song]
@@ -74,6 +75,19 @@ struct LibraryView: View {
                     totalSongs: songs.count
                 )
             }
+            .fullScreenCover(isPresented: $presentingNowPlaying) {
+                NowPlayingView()
+                    .environment(audioEngine)
+            }
+            .safeAreaInset(edge: .bottom) {
+                MiniPlayer(isPresented: $presentingNowPlaying)
+            }
+            .navigationDestination(for: Artist.self) { artist in
+                ArtistDetailView(artist: artist)
+            }
+            .navigationDestination(for: Album.self) { album in
+                AlbumDetailView(album: album)
+            }
             .task {
                 if libraryService == nil {
                     libraryService = LibraryService(context: modelContext)
@@ -117,9 +131,9 @@ struct LibraryView: View {
     private var content: some View {
         switch selectedTab {
         case .songs:    songsTab
-        case .artists:  artistsStub
-        case .albums:   albumsStub
-        case .source:   sourceStub
+        case .artists:  ArtistsView()
+        case .albums:   AlbumsView()
+        case .source:   SourceView()
         }
     }
 
@@ -240,51 +254,21 @@ struct LibraryView: View {
         }
     }
 
-    // MARK: - Stubs (more in Steps 4–6)
-
-    private var artistsStub: some View {
-        EmptyState(
-            title: "Artists",
-            message: "Browse your library grouped by performer.",
-            icon: {
-                Image(systemName: "person.2.fill")
-                    .font(.system(size: 60, weight: .light))
-            }
-        )
-    }
-
-    private var albumsStub: some View {
-        EmptyState(
-            title: "Albums",
-            message: "Browse your library grouped by album.",
-            icon: {
-                Image(systemName: "square.stack.fill")
-                    .font(.system(size: 60, weight: .light))
-            }
-        )
-    }
-
-    private var sourceStub: some View {
-        EmptyState(
-            title: "Source",
-            message: "Songs grouped by where they live (Local Files, Other Apps).",
-            icon: {
-                Image(systemName: "folder.fill")
-                    .font(.system(size: 60, weight: .light))
-            }
-        )
-    }
-
     // MARK: - Actions
 
     private func shuffleAll() {
-        guard let first = songs.shuffled().first else { return }
-        sendLoad(for: first)
+        let order = songs.shuffled()
+        guard let service = libraryService else { return }
+        let requests = service.playbackRequests(for: order)
+        audioEngine.playQueue(requests)
+        presentingNowPlaying = true
     }
 
     private func playAll() {
-        guard let first = songs.first else { return }
-        sendLoad(for: first)
+        guard let service = libraryService else { return }
+        let requests = service.playbackRequests(for: songs)
+        audioEngine.playQueue(requests)
+        presentingNowPlaying = true
     }
 
     private func toggleFavorite(_ song: Song) {

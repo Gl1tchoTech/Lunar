@@ -133,4 +133,35 @@ final class LibraryService {
         descriptor.fetchLimit = limit
         return (try? context.fetch(descriptor)) ?? []
     }
+
+    // MARK: — Queue builder
+
+    /// Build a `[PlaybackRequest]` for a list of `Song`s. Songs whose
+    /// files are missing on disk are silently skipped so playback
+    /// of a partially-imported library doesn't fail mid-queue.
+    func playbackRequests(for songs: [Song]) -> [PlaybackRequest] {
+        songs.compactMap { song in
+            guard let url = MusicLibrary.absoluteURL(forFileName: song.fileName) else {
+                return nil
+            }
+            return PlaybackRequest(
+                songID: song.persistentModelID,
+                title: song.title,
+                artist: song.artist,
+                fileURL: url,
+                duration: song.duration
+            )
+        }
+    }
+
+    /// Same as `playbackRequests(for:)` but with the queue starting
+    /// at the position of `startingSongID`. Used when the user taps
+    /// a specific row in the middle of an album / playlist.
+    func playbackRequests(for songs: [Song], startingAt startingSongID: PersistentIdentifier) -> [PlaybackRequest] {
+        guard let startIdx = songs.firstIndex(where: { $0.persistentModelID == startingSongID }) else {
+            return playbackRequests(for: songs)
+        }
+        let ordered = Array(songs[startIdx...])
+        return playbackRequests(for: ordered)
+    }
 }

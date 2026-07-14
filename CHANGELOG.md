@@ -6,6 +6,21 @@ All notable changes to **Lunar** are documented here. The format follows
 
 ## [Unreleased]
 
+### Step 4 — Feature wiring: Library sub-tabs · Now Playing + Mini Player · Playlists · Settings (in progress)
+
+- **AudioEngine.queue** — in-memory `[PlaybackRequest]` + queueIndex. New methods: `playQueue(_:startIndex:)`, `enqueueNext(_:)`, `next()`, `previous()`. `handleNextNodeCompleted` auto-advances. `isTransitioning` flag gates rapid `next`/`previous` taps. `onSongFinished` callback fires for `LibraryService.logListenEvent` (wired in Step 5).
+- **Library sub-tabs (Artists / Albums / Source)** — real `@Query` views replacing the Step-1 stubs. Each row pushes a detail view (`ArtistDetailView`, `AlbumDetailView`).
+- **Now Playing** — full-screen cover with Player-Theme gradient background, large artwork card, title/artist block, scrub bar, 5-button transport row. Launched via `.fullScreenCover` from the Mini Player dock.
+- **MiniPlayer** — persistent pill docked via `.safeAreaInset(edge: .bottom)` on Library / Playlist / Import. Hidden when no song is loaded. Tap opens Now Playing.
+- **ScrubBar** — slider bound to `AudioEngine.state.duration` / `currentTime` with m:ss labels. Seeks via `engine.send(.seek(t))`.
+- **TransportRow** — shuffle / previous / play-pause / next / repeat. Disables prev/next at queue ends.
+- **Playlist tab full rewrite** — `NavigationStack(path:)` drives a list of smart-playlist tiles + local playlists + Create New alert. Smart tiles (`Most Played`, `Recently Played`) push `PlaylistDetailView` with gradient hero. User playlists push with `icon`/`heart` heroes.
+- **PlaylistDetailView** — hero card (gradient/icon/heart) + LibraryActionRow + song list. Tap a song → `LibraryService.playbackRequests(for:startingAt:)` → `audioEngine.playQueue(requests)` + Now Playing cover.
+- **LibraryService.playbackRequests** — `[Song] → [PlaybackRequest]` builder. Skips songs missing on disk. Has `startingAt:` variant for tap-from-middle.
+- **PlayerStyleView** — Settings → Player Style. Vertical list of six theme preview cards (gradient + accent play button + transport pills).
+- **AppThemeView + AppThemeSettings** — Settings → App Theme. System/Light/Dark segmented picker + 3-column accent swatch grid (Purple/Pink/Cyan/Orange/Green/Red). Persists to `UserDefaults`; drives `WindowGroup.preferredColorScheme` and accent tint.
+- **SettingsView + LibraryView + ImportView rewires** — stubs replaced with real sub-views. Library/Playlist/Import get the Now Playing fullScreenCover + MiniPlayer safeAreaInset.
+
 ### Step 3 — Core library layer + Audio engine + Library Songs tab (in progress)
 
 - **`MusicLibrary`** (`Lunar/Sources/Core/Library/MusicLibrary.swift`) — sandbox-aware helpers: `ensureLibraryDirectory()`, `absoluteURL(forFileName:)` rebuilds the `Song.fileName`-→-`URL` mapping under `Application Support/Music/`.

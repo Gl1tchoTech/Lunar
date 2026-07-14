@@ -23,6 +23,9 @@ struct LunarApp: App {
     /// Sleep timer observable.
     @State private var sleepTimer = SleepTimer()
 
+    /// App Theme settings (System / Light / Dark + accent color).
+    @State private var appThemeSettings = AppThemeSettings()
+
     init() {
         do {
             container = try ModelContainer(for: LunarSchema.schema)
@@ -45,8 +48,9 @@ struct LunarApp: App {
             .environment(theme)
             .environment(audioEngine)
             .environment(sleepTimer)
-            .preferredColorScheme(nil)   // follow System
-            .tint(ColorTokens.appAccent)
+            .environment(appThemeSettings)
+            .preferredColorScheme(appThemeSettings.mode.colorScheme)
+            .tint(appThemeSettings.accent.color)
         }
         .modelContainer(container)
     }
@@ -77,6 +81,11 @@ private struct LunarAppCoordinator: View {
     let audioEngine: AudioEngine
     let sleepTimer: SleepTimer
 
+    /// Optional callback the host can use to log a song's natural
+    /// completion via `LibraryService.logListenEvent`. Step 5 wires
+    /// this up; for Step 4 it's left nil.
+    var onSongFinished: ((PlaybackRequest, TimeInterval) -> Void)?
+
     @State private var didWire = false
 
     var body: some View {
@@ -87,6 +96,9 @@ private struct LunarAppCoordinator: View {
                 audioEngine.attach(session: audioSession)
                 sleepTimer.onExpire = { [weak audioEngine] in
                     audioEngine?.pause()
+                }
+                if let cb = onSongFinished {
+                    audioEngine.onSongFinished = cb
                 }
             }
     }

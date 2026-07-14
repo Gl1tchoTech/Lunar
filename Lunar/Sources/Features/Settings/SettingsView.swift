@@ -1,38 +1,55 @@
 import SwiftUI
 
-/// Settings tab — skeleton showing navigation rows. The destinations are
-/// stubbed with `Text` placeholders that will be replaced with real views
-/// (Player Style carousel, App Theme picker, Equalizer, …) in a later step.
+/// Settings tab. Row-driven nav. Most destinations are still stubs
+/// (Equalizer/Playback/Language/About) — replaced in Phase 5.
 struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    row("Player Style",       systemImage: "tshirt",       to: playerStyleStub)
-                    row("App Theme",          systemImage: "paintpalette", to: appThemeStub)
+                    row("Player Style",       systemImage: "tshirt",       to: PlayerStyleView())
+                    row("App Theme",          systemImage: "paintpalette", to: AppThemeView())
                     row("Equalizer",          systemImage: "slider.vertical.3", to: equalizerStub)
                     row("Playback Setting",   systemImage: "gear",         to: playbackStub)
                     row("Language",           systemImage: "globe",        to: languageStub)
                 }
 
                 Section {
-                    row("Feedback",     systemImage: "envelope",    to: Text("Feedback form — coming soon"))
-                    row("Rate Us",      systemImage: "hand.thumbsup", to: Text("Rate Us — coming soon"))
-                    row("Privacy Policy", systemImage: "lock.shield", to: Text("Privacy Policy — coming soon"))
+                    row("Feedback",     systemImage: "envelope",    to: StubPage(
+                        title: "Feedback",
+                        message: "Reach the dev team directly. Coming soon.",
+                        systemImage: "envelope"
+                    ))
+                    row("Rate Us",      systemImage: "hand.thumbsup", to: StubPage(
+                        title: "Rate Us",
+                        message: "If Lunar makes your day a little better, we'd love a review.",
+                        systemImage: "hand.thumbsup"
+                    ))
+                    row("Privacy Policy", systemImage: "lock.shield", to: StubPage(
+                        title: "Privacy Policy",
+                        message: "Lunar is local-first. This page will lay out the full policy.",
+                        systemImage: "lock.shield"
+                    ))
                 }
 
                 Section {
                     HStack {
                         Text("Version")
                         Spacer()
-                        Text("0.1.0")
+                        Text("0.4.0")
                             .foregroundStyle(ColorTokens.textSecondary)
                     }
                     HStack {
                         Text("Build")
                         Spacer()
                         Text("1")
+                            .foregroundStyle(ColorTokens.textSecondary)
+                    }
+                    HStack {
+                        Text("Made with")
+                        Spacer()
+                        Text("\u{1F319} SwiftUI + AVAudioEngine")
                             .foregroundStyle(ColorTokens.textSecondary)
                     }
                 }
@@ -61,29 +78,13 @@ struct SettingsView: View {
     }
 
     // MARK: - Stubbed destination views
-    // Each one renders a tinted "coming soon" page so the row leads somewhere
-    // visible. Replaced with the real surface in subsequent steps.
-
-    private var playerStyleStub: some View {
-        StubPage(
-            title: "Player Style",
-            message: "Six Player Themes — including Cyber Neon, Vinyl/Lime, Aurora, Vivid Ocean, Sepia Wood, and Pastel Playful — will live here.",
-            systemImage: "tshirt"
-        )
-    }
-
-    private var appThemeStub: some View {
-        StubPage(
-            title: "App Theme",
-            message: "Dark / Light / System + accent color choice. Coming next.",
-            systemImage: "paintpalette"
-        )
-    }
+    // Real sub-views (Player Style + App Theme) live in `Sources/Settings/`.
+    // The remainder are placeholders Step 5 will replace.
 
     private var equalizerStub: some View {
         StubPage(
             title: "Equalizer",
-            message: "10-band DSP via AVAudioUnitEQ, with presets and reverb.",
+            message: "10-band DSP via AVAudioUnitEQ, with presets and reverb. Step 5.",
             systemImage: "slider.vertical.3"
         )
     }
@@ -91,7 +92,7 @@ struct SettingsView: View {
     private var playbackStub: some View {
         StubPage(
             title: "Playback Setting",
-            message: "Crossfade, gapless playback, sleep timer.",
+            message: "Crossfade duration, gapless playback, and sleep timer controls. Step 5.",
             systemImage: "gear"
         )
     }
@@ -99,7 +100,7 @@ struct SettingsView: View {
     private var languageStub: some View {
         StubPage(
             title: "Language",
-            message: "English (default). More locales coming soon.",
+            message: "English (default) for now. More locales coming in a follow-up.",
             systemImage: "globe"
         )
     }
@@ -107,7 +108,7 @@ struct SettingsView: View {
 
 // MARK: - StubPage
 
-private struct StubPage: View {
+struct StubPage: View {
     let title: String
     let message: String
     let systemImage: String
@@ -126,5 +127,6 @@ private struct StubPage: View {
 
 #Preview {
     SettingsView()
+        .environment(AppThemeSettings())
         .preferredColorScheme(.dark)
 }
