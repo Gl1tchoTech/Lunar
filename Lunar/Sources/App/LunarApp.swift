@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 
 @main
+@MainActor
 struct LunarApp: App {
 
     /// App-wide SwiftData container. Built once at launch.
