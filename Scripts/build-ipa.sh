@@ -8,6 +8,25 @@
 #
 # Default: Release
 #
+# Refinements adopted from cranci1/Luna's working ipabuild.sh
+# (https://github.com/cranci1/Luna/tree/main):
+#   - `clean build` in a single xcodebuild invocation so the
+#     DerivedData is fully wiped between runs (no stale object
+#     leakage into the Release .app).
+#   - Defensive `codesign --remove` + `_CodeSignature` /
+#     `embedded.mobileprovision` cleanup. Harmless when
+#     CODE_SIGNING_ALLOWED=NO (nothing signed) but guards against
+#     any future path that might leave a partial signature or a
+#     stale provisioning profile attached to the .app — both would
+#     crash SideStore on import.
+#   - `strip` on the embedded `Lunar` binary. Safe no-op if the
+#     binary is already stripped (Debug), and shrinks the Release
+#     IPA by ~5-10 MB by removing debug / symbol-table sections
+#     the runner never needs at runtime.
+#   - Cleans up the staging `$TARGET_APP` copy we use for the
+#     codesign/strip pass, leaving only `build/Payload` and
+#     `build/Lunar.ipa` behind.
+#
 # Requirements:
 #   - macOS 14+
 #   - Xcode 15.4+
@@ -37,34 +56,60 @@ fi
 echo "==> Generating Xcode project..."
 xcodegen generate
 
-echo "==> Building $SCHEME for iOS..."
+echo "==> Building $SCHEME for iOS (clean + Release)..."
 xcodebuild \
   -project "${APP_NAME}.xcodeproj" \
   -scheme "$SCHEME" \
   -configuration "$CONFIG" \
   -destination "generic/platform=iOS" \
+  -sdk iphoneos \
   -derivedDataPath "$DERIVED_DATA" \
+  clean build \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGN_IDENTITY="" \
-  build
+  CODE_SIGN_ENTITLEMENTS=""
 
 APP_PATH="$DERIVED_DATA/Build/Products/${CONFIG}-iphoneos/${APP_NAME}.app"
+TARGET_APP="$BUILD_DIR/${APP_NAME}.app"
 
 if [[ ! -d "$APP_PATH" ]]; then
   echo "ERROR: built app not found at $APP_PATH"
   exit 1
 fi
 
+echo "==> Defensive code-signature cleanup on the staged .app..."
+# These are no-ops when CODE_SIGNING_ALLOWED=NO (which it is in CI),
+# but they keep the IPA safe to import into SideStore even if some
+# future path leaves a partial signature or a stale provisioning
+# profile attached. Order matters: `--remove` first, then the
+# filesystem cleanup.
+mkdir -p "$BUILD_DIR"
+rm -rf "$TARGET_APP"
+cp -R "$APP_PATH" "$TARGET_APP"
+codesign --remove "$TARGET_APP" 2>/dev/null || true
+[[ -e "$TARGET_APP/_CodeSignature" ]] && rm -rf "$TARGET_APP/_CodeSignature"
+[[ -e "$TARGET_APP/embedded.mobileprovision" ]] && rm -rf "$TARGET_APP/embedded.mobileprovision"
+
 echo "==> Packaging $APP_NAME as unsigned IPA..."
 rm -rf "$BUILD_DIR/Payload" "$BUILD_DIR/$IPA_NAME"
 mkdir -p "$BUILD_DIR/Payload"
-cp -R "$APP_PATH" "$BUILD_DIR/Payload/"
+cp -R "$TARGET_APP" "$BUILD_DIR/Payload/${APP_NAME}.app"
+
+if [[ -f "$BUILD_DIR/Payload/${APP_NAME}.app/$APP_NAME" ]]; then
+  echo "==> Stripping debug + symbol table from $APP_NAME binary..."
+  strip "$BUILD_DIR/Payload/${APP_NAME}.app/$APP_NAME" 2>/dev/null || true
+fi
 
 (
   cd "$BUILD_DIR"
   zip -qr "$IPA_NAME" "Payload"
 )
+
+# Clean up the intermediate staged copy so only Payload + the IPA
+# survive in build/ (matches cranci1/Luna's ipabuild.sh behaviour and
+# keeps the upload-artifact delta minimal).
+rm -rf "$TARGET_APP"
 
 echo
 echo "✅ Built: $BUILD_DIR/$IPA_NAME"
