@@ -4,6 +4,7 @@ import SwiftUI
 /// Library Source tab.
 ///
 /// Layout: yellow folder icon (40pt square) · title · `N songs | duration`.
+@MainActor
 struct SourceRow: View {
 
     let title: String

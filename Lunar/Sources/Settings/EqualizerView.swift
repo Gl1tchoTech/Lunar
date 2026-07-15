@@ -12,6 +12,7 @@ import SwiftData
 ///    table.
 /// 4. **Reset**: zeros the bands. The on/off toggle stays where the
 ///    user set it.
+@MainActor
 struct EqualizerView: View {
 
     @Environment(EQSettings.self) private var settings

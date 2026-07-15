@@ -9,6 +9,7 @@ import SwiftData
 /// Real implementation: a long-press song menu lets the user reassign
 /// a song between Local and Imported buckets. For now every song is
 /// counted as "Local Files".
+@MainActor
 struct SourceView: View {
 
     @Query private var songs: [Song]

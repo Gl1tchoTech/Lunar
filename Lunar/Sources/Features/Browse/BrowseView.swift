@@ -23,6 +23,7 @@ private let categories: [BrowseCategory] = [
 
 // MARK: — BrowseView
 
+@MainActor
 struct BrowseView: View {
 
     private let columns = [

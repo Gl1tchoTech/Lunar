@@ -6,6 +6,7 @@ import SwiftUI
 ///
 /// Tapping the tile pushes `PlaylistDetailView` configured for the
 /// matching smart playlist.
+@MainActor
 struct SmartPlaylistTile: View {
 
     enum Kind: Hashable {

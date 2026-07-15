@@ -3,6 +3,7 @@ import SwiftUI
 /// Settings — Player Style sheet. Vertical list of the six Player
 /// Themes with a small preview card (gradient + accent color circle +
 /// play button). Tap a card to set `PlayerThemeManager.current`.
+@MainActor
 struct PlayerStyleView: View {
 
     @Environment(PlayerThemeManager.self) private var manager

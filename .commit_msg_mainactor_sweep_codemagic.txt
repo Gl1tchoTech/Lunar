@@ -1,0 +1,23 @@
+fix(swift): complete @MainActor sweep on remaining Views + add Codemagic YAML
+
+Resolve the remaining Swift 5.10 / Xcode 15.4 strict-concurrency leaks by
+adding struct-level @MainActor to every SwiftUI View struct that
+references the @Observable AudioEngine / SwiftData models without an
+isolated declaration. This mirrors the pattern used in d291d44,
+0500b3e, and 013ad3b and closes the cross-actor boundary errors that
+this batch would have surfaced against the next GHA compile pass.
+
+Views annotated in this commit (15 total):
+- BrowseView, AlbumRow, AlbumsView, ArtistRow, ArtistsView
+- LibraryActionRow, SongRow, SourceRow, SourceView
+- LocalPlaylistRow, PlaylistView, SmartPlaylistTile
+- AboutView, EqualizerView, PlayerStyleView
+
+Codemagic compatibility:
+- New codemagic.yaml wires brew install xcodegen -> xcodegen generate
+  -> bash Scripts/build-ipa.sh Release, declaring build/Lunar.ipa as
+  the artifact (matching Scripts/build-ipa.sh output path).
+- Drops the GHA-only `objectVersion = 56` perl patch because
+  Codemagic's `xcode: latest` runtime on mac_mini_m2 reads the
+  dynamically-generated pbxproj without Xcode 15.4 floor issues.
+- Trigger: push to main only. Publishing disabled (sideload-only).

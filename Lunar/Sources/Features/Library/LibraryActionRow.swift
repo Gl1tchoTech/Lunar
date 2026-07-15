@@ -4,6 +4,7 @@ import SwiftUI
 /// header. Two actions: **Shuffle** (crossed-arrows icon) and
 /// **Play All** (play icon). Both are accent-tinted to read as
 /// primary CTAs without dominating the layout.
+@MainActor
 struct LibraryActionRow: View {
 
     let totalSongs: Int

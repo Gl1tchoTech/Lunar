@@ -7,6 +7,7 @@ import SwiftData
 ///
 /// Artists are derived on-the-fly from `Song.artistEntity` via the
 /// `@Query` in `ArtistsView` — we don't store a separate row anymore.
+@MainActor
 struct ArtistRow: View {
 
     let artist: Artist

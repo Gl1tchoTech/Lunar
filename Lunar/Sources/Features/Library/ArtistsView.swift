@@ -4,6 +4,7 @@ import SwiftData
 /// Library — Artists tab. Lists every Artist entity in the library.
 /// Tapping a row pushes `ArtistDetailView` so the user can see the
 /// artist's albums + songs.
+@MainActor
 struct ArtistsView: View {
 
     @Query(sort: [SortDescriptor(\Artist.name, order: .forward)])

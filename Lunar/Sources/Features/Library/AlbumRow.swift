@@ -4,6 +4,7 @@ import SwiftData
 /// Row representing a single album in the Library Albums tab.
 ///
 /// Layout: 56pt square cover · album title · artist · `N songs | duration`.
+@MainActor
 struct AlbumRow: View {
 
     let album: Album

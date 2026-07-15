@@ -9,6 +9,7 @@ import SwiftData
 /// 4. List of user playlists
 ///
 /// All pushes go to `PlaylistDetailView` with the right hero style.
+@MainActor
 struct PlaylistView: View {
 
     @Environment(\.modelContext) private var modelContext

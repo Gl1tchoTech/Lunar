@@ -11,6 +11,7 @@ import SwiftUI
 /// Designed to look at home next to `PlayerStyleView` and
 /// `AppThemeView` — same inset-grouped list, same `ColorTokens.canvas`
 /// background, same chevron language (none here, by design).
+@MainActor
 struct AboutView: View {
 
     @Environment(\.openURL) private var openURL

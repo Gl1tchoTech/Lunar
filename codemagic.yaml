@@ -1,0 +1,51 @@
+############################################################
+# Codemagic CI workflow: build an unsigned Lunar.ipa
+# -------------------------------------------------------------
+# Replaces .github/workflows/build-ipa.yml as the canonical
+# build path for SideStore / AltStore sideloading.
+#
+# Why no objectVersion perl patch here?
+#   The GHA workflow pinned Xcode 15.4 and needed a perl hack
+#   to force `objectVersion = 56;` because XcodeGen 2.42+
+#   writes `objectVersion = 77;` by default. With
+#   `xcode: latest` on Codemagic (mac_mini_m2 image), the
+#   runner already ships an Xcode that reads modern pbxproj
+#   formats natively, so we drop the patch. If the IPA ever
+#   fails to open in older Xcodes, add the perl block back.
+############################################################
+workflows:
+  ios-unsigned-ipa:
+    name: Build Unsigned Lunar IPA
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+    environment:
+      xcode: latest
+      vars:
+        XCODE_PROJECT: Lunar.xcodeproj
+        XCODE_SCHEME: Lunar
+        CONFIG: Release
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+    scripts:
+      - name: Install xcodegen
+        script: brew install xcodegen
+      - name: Generate Xcode project
+        script: xcodegen generate
+      - name: Build & package unsigned IPA
+        script: bash Scripts/build-ipa.sh "$CONFIG"
+    artifacts:
+      # Scripts/build-ipa.sh writes the .ipa into ./build/Lunar.ipa
+      # relative to $CM_BUILD_DIR (the repo root).
+      - build/Lunar.ipa
+      # Keep the raw .app bundle too so we can re-sign locally.
+      - build/Payload/Lunar.app
+    publishing:
+      # No App Store / TestFlight distribution — sideloading is local.
+      # TODO: wire email/Discord notifications if you want build alerts.
+      emails:
+        - users: none

@@ -5,6 +5,7 @@ import SwiftUI
 /// Layout: 48pt square icon thumb · title · `N songs | duration`.
 /// `My Favorites` gets a heart glyph; user-created playlists get a
 /// small tone-generic thumb.
+@MainActor
 struct LocalPlaylistRow: View {
 
     let playlist: Playlist

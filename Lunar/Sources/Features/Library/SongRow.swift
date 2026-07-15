@@ -5,6 +5,7 @@ import SwiftData
 ///
 /// Layout: 48pt square artwork thumb · title (1 line) · artist
 /// (secondary, 1 line) · optional duration on the trailing edge.
+@MainActor
 struct SongRow: View {
 
     let song: Song

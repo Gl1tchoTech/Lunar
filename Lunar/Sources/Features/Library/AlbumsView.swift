@@ -3,6 +3,7 @@ import SwiftData
 
 /// Library — Albums tab. Lists every Album entity in the library.
 /// Tapping a row pushes `AlbumDetailView` for the album's song list.
+@MainActor
 struct AlbumsView: View {
 
     @Query(sort: [SortDescriptor(\Album.title, order: .forward)])
