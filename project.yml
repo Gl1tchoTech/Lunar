@@ -1,5 +1,13 @@
 name: Lunar
 options:
+  # Pin the generated .xcodeproj to a format every supported Xcode can read.
+  # Without this, the version of XcodeGen + Xcode that last regenerated
+  # the project (e.g. objectVersion 77 = Xcode 16+) bakes in and Xcode 15.4
+  # (the minimum SideStore workflow requires per docs/BUILD.md) refuses
+  # with: "The project cannot be opened because it is in a future Xcode
+  # project file format (77)."
+  # objectVersion 56 is the Xcode 14.0 baseline — compatible with any
+  # Xcode 14.x, 15.x, or 16.x that supports SwiftData + iOS 17 targets.
   bundleIdPrefix: com.gl1tchotech
   deploymentTarget:
     iOS: "17.0"
@@ -7,6 +15,8 @@ options:
   createIntermediateGroups: true
   generateEmptyDirectories: true
   groupSortPosition: top
+  objectVersion: 56
+  compatibilityVersion: "Xcode 14.0"
 
 configs:
   Debug: debug
