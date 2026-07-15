@@ -137,8 +137,19 @@ jobs:
           fi
           echo "--- pbxproj format diagnostics ---"
           grep -nE 'objectVersion|compatibilityVersion' "$PBX" || true
+          # Symmetric extraction: first grep pulls the full
+          # `foo = bar;` line, second stage strips everything but
+          # the literal value, so what the comparison sees is just
+          # `56` or `"Xcode 14.0"` — exactly the literal the
+          # EXPECTED_* variables hold. Asymmetric extraction here
+          # (only a single grep stage on COMPAT) was the false-
+          # positive bug fixed in this commit: the diagnostic
+          # printed `got compatibilityVersion = "Xcode 14.0"` but
+          # compared it against `expected "Xcode 14.0"`, tripping
+          # on a 19-character prefix mismatch even though the
+          # values were identical.
           OBJ=$(grep -oE 'objectVersion\s*=\s*[0-9]+' "$PBX" | head -1 | grep -oE '[0-9]+' || true)
-          COMPAT=$(grep -oE 'compatibilityVersion\s*=\s*"[^"]+"' "$PBX" | head -1 || true)
+          COMPAT=$(grep -oE 'compatibilityVersion\s*=\s*"[^"]+"' "$PBX" | head -1 | grep -oE '"[^"]+"' || true)
           echo "  objectVersion          = ${OBJ:-MISSING}"
           echo "  compatibilityVersion   = ${COMPAT:-MISSING}"
           EXPECTED_OBJ=56
