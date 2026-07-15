@@ -6,6 +6,7 @@ import SwiftData
 ///
 /// Also runs **first-launch data seeding** on the main context via `.task`
 /// (idempotent — no-op on subsequent launches).
+@MainActor
 struct RootView: View {
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
