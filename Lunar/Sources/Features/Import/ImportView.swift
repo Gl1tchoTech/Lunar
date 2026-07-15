@@ -4,6 +4,24 @@ import UniformTypeIdentifiers
 
 /// Import tab — main surface for bringing local audio into the library.
 ///
+/// **Tier 6 update.** Before this rewrite, `isImporting`, `lastImportIDs`,
+/// and `importError` lived as `@State` on this view. That meant URLs
+/// delivered by iOS's **"Open In..."** UI (Other Apps handoff) were
+/// silently dropped whenever the user wasn't sitting on the Import tab.
+/// Those three properties now live on `ImportManager` (an `@Observable`
+/// owned by `LunarApp` and injected into the environment via
+/// `.environment(importManager)`). The view is now a pure presentation
+/// layer that:
+///
+/// 1. Opens the system `.fileImporter` for *manual* file picks.
+/// 2. Forwards picker results to `importManager.enqueueMany`.
+/// 3. Reads `importManager.isImporting` / `lastImportIDs` / `importError`
+///    for display.
+///
+/// The `onOpenURL` scene-level handler in `LunarAppCoordinator` is the
+/// *other* entry point — it lands plain URLs straight into the same
+/// `importManager.enqueue(_:)` queue.
+///
 /// **Surface layout (top → bottom):**
 /// 1. Header — `Import` title with a `+` toolbar button.
 /// 2. Hero CTA → opens the system document picker via SwiftUI's
@@ -13,16 +31,9 @@ import UniformTypeIdentifiers
 ///
 /// **Picker scope** — `UTType.audio` shows Local Files, iCloud Drive,
 /// `On My iPhone`, and any third-party Files providers the user has
-/// installed.
-///
-/// **State machine:**
-/// - `isPickerPresented`  — driven by the toolbar `+` and the hero CTA.
-/// - `isImporting`        — drives the toolbar spinner; also disables
-///    re-opening the picker while a batch is mid-flight.
-/// - `lastImportIDs`      — `PersistentIdentifier`s added in the most
-///    recent batch; filters the `Imported Today` section.
-/// - `importError`        — surfaces `failed` URLs after a partial
-///    success, or copy/extraction errors.
+/// installed. `CFBundleDocumentTypes` in `project.yml` also registers
+/// Lunar as an alternate "Open In..." target so external apps (Files,
+/// VLC, Shortcuts) can hand URLs over via `.onOpenURL`.
 ///
 /// **Now Playing binding** — held locally as `@State` so the same
 /// flag flip drives both the `.safeAreaInset` `MiniPlayer` (which
@@ -32,15 +43,16 @@ struct ImportView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(AudioEngine.self) private var audioEngine
+    @Environment(ImportManager.self) private var importManager
 
     @Query(sort: [SortDescriptor(\Song.dateAdded, order: .reverse)])
     private var allSongs: [Song]
 
+    /// Local because only this view flips it; the binding is shared
+    /// between the toolbar `+` button, the hero CTA, and the
+    /// `fileImporter` modifier.
     @State private var isPickerPresented = false
-    @State private var isImporting = false
     @State private var presentingNowPlaying = false
-    @State private var lastImportIDs: [PersistentIdentifier] = []
-    @State private var importError: String?
 
     var body: some View {
         NavigationStack {
@@ -74,9 +86,9 @@ struct ImportView: View {
             .alert(
                 "Some files couldn't be imported",
                 isPresented: importErrorBinding,
-                presenting: importError
+                presenting: importManager.importError
             ) { _ in
-                Button("OK", role: .cancel) { importError = nil }
+                Button("OK", role: .cancel) { importManager.clearError() }
             } message: { message in
                 Text(message)
             }
@@ -88,7 +100,7 @@ struct ImportView: View {
     private var emptyStatePlaceholder: some View {
         EmptyState(
             title: "No music yet",
-            message: "Bring in audio from Files, iCloud Drive, or other apps. Lunar reads ID3 / iTunes / Vorbis tags and embedded artwork automatically.",
+            message: "Bring in audio from Files, iCloud Drive, On My iPhone, or other apps. Lunar reads ID3 / iTunes / Vorbis tags and embedded artwork automatically.",
             primaryActionTitle: "Import Audio Files",
             primaryAction: openPicker,
             icon: {
@@ -122,7 +134,7 @@ struct ImportView: View {
                     Text("Add Audio Files")
                         .font(Typography.headline)
                         .foregroundStyle(ColorTokens.textPrimary)
-                    Text("From Files, iCloud Drive, or other apps")
+                    Text("From Files, iCloud Drive, On My iPhone, or other apps")
                         .font(Typography.caption1)
                         .foregroundStyle(ColorTokens.textSecondary)
                 }
@@ -145,8 +157,11 @@ struct ImportView: View {
 
     @ViewBuilder
     private var importedTodaySection: some View {
+        // Tier 6 — read `lastImportIDs` off the manager so a batch
+        // imported via "Open In..." on a different tab also shows up
+        // here when the user navigates back to Import.
         let recent = allSongs.filter { song in
-            lastImportIDs.contains(song.persistentModelID)
+            importManager.lastImportIDs.contains(song.persistentModelID)
         }
         if !recent.isEmpty {
             VStack(alignment: .leading, spacing: Spacing.s) {
@@ -208,7 +223,10 @@ struct ImportView: View {
             Button {
                 openPicker()
             } label: {
-                if isImporting {
+                // Tier 6 — spinner now reads from the manager so it
+                // also rotates while a batch imported via .onOpenURL
+                // is in flight.
+                if importManager.isImporting {
                     ProgressView()
                         .progressViewStyle(.circular)
                         .tint(.white)
@@ -216,14 +234,14 @@ struct ImportView: View {
                     Image(systemName: "plus")
                 }
             }
-            .disabled(isImporting)
+            .disabled(importManager.isImporting)
         }
     }
 
     // MARK: - Actions
 
     private func openPicker() {
-        guard !isImporting else { return }
+        guard !importManager.isImporting else { return }
         isPickerPresented = true
     }
 
@@ -231,29 +249,11 @@ struct ImportView: View {
         switch result {
         case .success(let urls):
             guard !urls.isEmpty else { return }
-            Task { await runImport(urls: urls) }
+            // Tier 6 — no local `runImport`. Forward straight to the
+            // manager; the same drain path also handles `.onOpenURL`.
+            importManager.enqueueMany(urls)
         case .failure(let error):
-            importError = error.localizedDescription
-        }
-    }
-
-    private func runImport(urls: [URL]) async {
-        isImporting = true
-        defer { isImporting = false }
-
-        let importer = MusicImporter(context: modelContext)
-        do {
-            let result = try await importer.importFiles(at: urls)
-            lastImportIDs = result.inserted
-
-            if !result.failed.isEmpty {
-                let names = result.failed.prefix(3)
-                    .map { ($0.url as NSURL).lastPathComponent ?? "?" }
-                    .joined(separator: ", ")
-                importError = "\(result.failed.count) file\(result.failed.count == 1 ? "" : "s") failed: \(names)"
-            }
-        } catch {
-            importError = error.localizedDescription
+            importManager.importError = error.localizedDescription
         }
     }
 
@@ -267,12 +267,13 @@ struct ImportView: View {
         Task { await audioEngine.playQueue(requests, startIndex: startIndex) }
     }
 
-    /// Drives the post-batch alert. Becomes `true` while `importError`
-    /// is non-nil; presenter clears it back to `nil` on dismissal.
+    /// Drives the post-batch alert. Becomes `true` while the
+    /// manager's `importError` is non-nil; presenter clears it
+    /// back to `nil` on dismissal.
     private var importErrorBinding: Binding<Bool> {
         Binding(
-            get: { importError != nil },
-            set: { newValue in if !newValue { importError = nil } }
+            get: { importManager.importError != nil },
+            set: { newValue in if !newValue { importManager.clearError() } }
         )
     }
 }
@@ -348,5 +349,6 @@ private struct ImportSongRow: View {
 #Preview {
     ImportView()
         .environment(AudioEngine())
+        .environment(ImportManager())
         .preferredColorScheme(.dark)
 }

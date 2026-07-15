@@ -64,6 +64,47 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         NSMicrophoneUsageDescription: Lunar uses audio APIs for local playback only.
         NSAppleMusicUsageDescription: Lunar may link to your Apple Music library if granted access.
+        # Tier 6 — Other Apps handoff. Register Lunar as an alternate
+        # "Open In..." target for any audio file. LSHandlerRank: Alternate
+        # means Files / VLC / Shortcuts offer us after the default opener
+        # (Apple Music), preserving Apple's own integration first.
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Audio Document
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - public.audio
+              - public.mp3
+              - public.mpeg-4-audio
+              - public.aiff-audio
+              - public.aac-audio
+              - id3
+              - com.microsoft.waveform-audio
+        # Tier 6 — Defensive types for FLAC + Ogg Vorbis. Without these,
+        # third-party apps that don't already declare `org.xiph.flac` or
+        # `org.vorbis` may not route audio through "Open In..." Lunar.
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: org.xiph.flac
+            UTTypeDescription: FLAC Audio
+            UTTypeConformsTo:
+              - public.audio
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - flac
+              public.mime-type:
+                - audio/flac
+                - audio/x-flac
+          - UTTypeIdentifier: org.vorbis
+            UTTypeDescription: Ogg Vorbis Audio
+            UTTypeConformsTo:
+              - public.audio
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - ogg
+                - oga
+              public.mime-type:
+                - audio/ogg
+                - audio/vorbis
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.gl1tchotech.lunar

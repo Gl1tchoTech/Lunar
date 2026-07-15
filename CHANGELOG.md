@@ -6,6 +6,78 @@ All notable changes to **Lunar** are documented here. The format follows
 
 ## [Unreleased]
 
+### Step 5 — Tier 6: Import surface expansion ✅
+
+#### Other Apps handoff (`project.yml` + `ImportManager`)
+
+- **`CFBundleDocumentTypes`** registered in `project.yml` so iOS
+  offers Lunar as an *alternate* **“Open In…”** target for audio
+  files. `LSHandlerRank: Alternate` keeps Apple Music the primary
+  opener — the user still sees Lunar in the share sheet behind it.
+  Covers `public.audio`, `public.mp3`, `public.mpeg-4-audio`,
+  `public.aiff-audio`, `public.aac-audio`, `id3`, and
+  `com.microsoft.waveform-audio`.
+- **`UTImportedTypeDeclarations`** for `org.xiph.flac` and
+  `org.vorbis` — defensive: without these, third-party apps that
+  don’t already declare those UTTypes wouldn’t route FLAC / OGG
+  through “Open In…” Lunar. Both conform to `public.audio`, declare
+  filename extensions (`flac`, `ogg`, `oga`) and MIME types
+  (`audio/flac`, `audio/ogg`, `audio/vorbis`).
+- **`ImportManager`** (`Lunar/Sources/Core/Library/ImportManager.swift`)
+  — NEW `@MainActor @Observable final class`. Replaces the
+  in-`ImportView` state machine with a long-lived observable owned
+  by `LunarApp` and injected into the SwiftUI environment. Holds:
+  `pendingURLs: [URL]` (queue), `isImporting: Bool`, `lastImportIDs:
+  [PersistentIdentifier]`, `importError: String?`, and a `runner`
+  closure decoupled from `ModelContext` so tests can supply a fake.
+  `enqueue(_:)` / `enqueueMany(_:)` schedule an idempotent drain —
+  concurrent enqueues mid-batch append to `pendingURLs` and are
+  consumed together when the current batch finishes.
+- **`LunarAppCoordinator` wiring**: `importManager.runner` is
+  installed once at launch as
+  `{ urls in try await MusicImporter(context: modelContainer
+  .mainContext).importFiles(at: urls) }`. The view-level
+  `.onOpenURL { importManager.enqueue(url) }` modifier routes every
+  incoming “Open In…” URL straight into the same queue and pipeline
+  the manual picker uses. Works regardless of which tab is mounted.
+- **`ImportView` rewrite** drops its local `isImporting`,
+  `lastImportIDs`, `importError`, and `runImport(urls:)` state; reads
+  `@Environment(ImportManager.self)`. Toolbar spinner, alert
+  binding, and **Imported Today** section all read from the manager
+  now, so a batch imported via “Open In…” while the user is on
+  another tab still appears in the “Imported Today” card when they
+  return to Import.
+- **Empty-state copy**: *“Bring in audio from Files, iCloud Drive,
+  On My iPhone, or other apps. Lunar reads ID3 / iTunes / Vorbis tags
+  and embedded artwork automatically.”* — names the providers that
+  the system `.fileImporter` natively surfaces so the user knows
+  where to look.
+- **Hero CTA copy**: *“From Files, iCloud Drive, On My iPhone, or
+  other apps.”* — the provider list stays on the affordance the user
+  actually taps.
+- **`MusicImporter` itself unchanged** — it already handles
+  security-scoped URLs (`startAccessingSecurityScopedResource()` +
+  symmetric `defer { stop }`), does the dedup on `(title, artist,
+  album, duration)`, and copies bytes off-thread on a detached task.
+  Tier 6 just hoists the call site to a global queue.
+
+#### Tests added
+
+- **`ImportManagerTests`** (`Tests/LunarTests/ImportManagerTests.swift`)
+  — 9 tests covering: single/multi enqueue, empty-array no-op,
+  drain-without-runner short-circuits (URLs stay queued),
+  runnerSuccess writes `lastImportIDs` + clears error, runnerError
+  surfaces localized error, partial-failure error message format
+  (“`N files failed: bad-one, bad-two, …`”), drain-while-busy is
+  idempotent (URLs arriving mid-batch pile up in `pendingURLs` and
+  are consumed by the next drain), and `clearError()` resets state.
+
+#### Deferred (per locked deferrals)
+
+- **Feedback / Rate Us / Privacy destinations** — untouched.
+- **Browse downloader / streamer backend** — untouched.
+- **Wi-Fi Drive** — untouched.
+
 ### Step 5 — Tier 5: Player UX polish ✅
 
 Four surfaces wired end-to-end against the existing playback, model,

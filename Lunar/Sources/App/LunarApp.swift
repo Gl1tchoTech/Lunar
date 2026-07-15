@@ -37,6 +37,12 @@ struct LunarApp: App {
     /// App Theme settings (System / Light / Dark + accent color).
     @State private var appThemeSettings = AppThemeSettings()
 
+    /// Tier 6 — queue + state for the import pipeline. Owns the
+    /// `onOpenURL` (Other Apps handoff) inbox so a URL arriving
+    /// while the user is on a different tab still gets drained
+    /// cleanly.
+    @State private var importManager = ImportManager()
+
     init() {
         do {
             container = try ModelContainer(for: LunarSchema.schema)
@@ -57,6 +63,7 @@ struct LunarApp: App {
                     playbackSettings: playbackSettings,
                     eqSettings: eqSettings,
                     queueSettings: queueSettings,
+                    importManager: importManager,
                     modelContainer: container
                 )
                 .environment(theme)
@@ -66,6 +73,7 @@ struct LunarApp: App {
                 .environment(eqSettings)
                 .environment(queueSettings)
                 .environment(appThemeSettings)
+                .environment(importManager)
             .preferredColorScheme(appThemeSettings.mode.colorScheme)
             .tint(appThemeSettings.accent.color)
         }
@@ -100,6 +108,11 @@ private struct LunarAppCoordinator: View {
     let playbackSettings: PlaybackSettings
     let eqSettings: EQSettings
     let queueSettings: QueueSettings
+    /// Tier 6 — import queue + state. The coordinator wires its
+    /// `runner` closure once at launch (using the main context) and
+    /// attaches `.onOpenURL` so URLs flow into the queue regardless
+    /// of which tab is mounted.
+    let importManager: ImportManager
     /// SwiftData container — used by the NowPlayingCenterManager wiring
     /// to resolve a song's artwork bytes on the main context. Kept as
     /// `let` because views recreate the struct on every draw; lifecycle
@@ -121,6 +134,15 @@ private struct LunarAppCoordinator: View {
 
     var body: some View {
         RootView()
+            // Tier 6 — Other Apps handoff. iOS delivers "Open In..."
+            // URLs at the scene level regardless of which tab is
+            // mounted. We forward them straight to ImportManager;
+            // its `isImporting` gate + queue drain ensures dedup +
+            // security-scoped handling still flow through
+            // `MusicImporter.importFiles(at:)`.
+            .onOpenURL { url in
+                importManager.enqueue(url)
+            }
             .task {
                 guard !didWire else { return }
                 didWire = true
@@ -171,6 +193,18 @@ private struct LunarAppCoordinator: View {
                 let initialBands = eqSettings.bands
                 Task { await audioEngine.send(.setEQ(bands: initialBands)) }
                 audioEngine.setEQEnabled(eqSettings.isEnabled)
+
+                // Tier 6 — import queue wiring. We hang the runner
+                // closure once at launch so `ImportManager` can stay
+                // decoupled from the SwiftData environment. The
+                // closure runs on the main actor; SwiftData's main
+                // context is `@MainActor` so calling it from here is
+                // safe without `Task { @MainActor in ... }`.
+                importManager.runner = { urls in
+                    try await MusicImporter(
+                        context: modelContainer.mainContext
+                    ).importFiles(at: urls)
+                }
 
                 // Tier 3 — wire MPNowPlayingInfoCenter + MPRemoteCommandCenter
                 // through `NowPlayingCenterManager`. The manager's

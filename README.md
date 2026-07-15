@@ -103,6 +103,15 @@ All themes share the same information architecture — only the visual chrome ch
 
 ---
 
+### ✅ Step 5 — Tier 6: Import surface expansion [Tier 6 done]
+- [x] **`CFBundleDocumentTypes`** (in `project.yml`) — registers Lunar as an *alternate* “Open In…” target for `public.audio`, `public.mp3`, `public.mpeg-4-audio`, `public.aiff-audio`, `public.aac-audio`, `id3`, `com.microsoft.waveform-audio`. `LSHandlerRank: Alternate` keeps Apple Music the primary opener (Lunar still appears in the share sheet).
+- [x] **`UTImportedTypeDeclarations`** for `org.xiph.flac` + `org.vorbis` — defensive so third-party apps that haven’t declared those types still route FLAC / OGG through “Open In…” Lunar. Both conform to `public.audio` and declare filename extensions + MIME types.
+- [x] **`ImportManager`** (NEW `@MainActor @Observable` at `Lunar/Sources/Core/Library/ImportManager.swift`) — hoists `isImporting`, `lastImportIDs`, `importError`, and `runImport` out of `ImportView` so URLs arriving via `.onOpenURL` are processed regardless of which tab is mounted. Holds a `runner` closure decoupled from `ModelContext` (so tests can fake the importer).
+- [x] **`onOpenURL` scene handler** in `LunarAppCoordinator` forwards every incoming audio URL straight to `ImportManager.enqueue(_:)`. Works behind the Library / Playlist / Browse / Settings tabs.
+- [x] **`ImportView` rewrite** — reads `@Environment(ImportManager.self)`. Empty-state message now names supported providers explicitly: *“Bring in audio from Files, iCloud Drive, On My iPhone, or other apps.”* Hero CTA subtitle: *“From Files, iCloud Drive, On My iPhone, or other apps.”*
+- [x] **`ImportManagerTests`** — 9 tests covering: enqueue (single / multi / empty), drain-without-runner no-ops, runner success writes `lastImportIDs` + clears error, runner `throw` surfaces localized error, partial-failure message format, drain-while-busy is idempotent (queued URLs survive mid-batch + get drained on next cycle), `clearError()` resets.
+- Branded Cloud Providers were intentionally **NOT** a separate card row — that pattern creates false picker-routing expectations (tap “iCloud” → land in generic picker). Names are surfaced instead via the Hero CTA + empty-state copy. Gemini-verified as a rejected pattern.
+
 ### ✅ Step 5 — Tier 3: System Hooks
 - [x] **`NowPlayingCenterManager`** — bridges `AudioEngine` → `MPNowPlayingInfoCenter` (Lock Screen / Control Center) + registers `MPRemoteCommandCenter` handlers (play / pause / toggle / next / previous / skipForward 15 s / skipBackward 15 s / changePlaybackPosition) that forward to `engine.send(_:)`. Built-in artwork cache keyed by `PersistentIdentifier`.
 - [x] **`AirPlayRouteButton`** — `UIViewRepresentable` over `AVRoutePickerView`, tinted to the active player-theme palette, dropped into the Now Playing top chrome.
@@ -163,7 +172,7 @@ All themes share the same information architecture — only the visual chrome ch
 
 ### ⏭ Up next (Tier 5 → Tier 7)
 - [x] **Step 5 — Tier 5**: Shuffle + Repeat persistence (`QueueSettings` + `QueueMode` enums + `AudioEngine.buildQueue` static + `TransportRow` reads QueueSettings so mirror → UserDefaults), `My Favorites` smart-playlist tile (third in the horizontal-scroll row), Library search bar (`.searchable` + `.task(id:)` 250 ms debounce `SongsListView` subview), and `SongInfoSheet` (Form-style with Identity / Audio / File / Lyrics / Actions + `Menu` playlist picker + `ShareLink`).
-- [ ] Tier 6 — Import surface expansion: Other Apps handoff, branded Cloud Providers (Wi-Fi Drive explicitly deferred per user)
+- [x] **Step 5 — Tier 6**: Import surface expansion — Other Apps handoff (`CFBundleDocumentTypes` + `UTImportedTypeDeclarations` for FLAC / Ogg in `project.yml`), `ImportManager` `@MainActor @Observable` queue + state hoisted out of `ImportView`, `.onOpenURL` scene handler in `LunarAppCoordinator`, ImportView reads from env (dropping its local state machine), empty-state copy names supported providers. Branded Cloud Providers intentionally **NOT** a separate card row (creates false picker-routing expectations). Wi-Fi Drive still explicitly deferred per user.
 - [ ] Tier 7 — Browse downloader / streamer (placeholder today; user-deferred until they say otherwise)
 
 ### ✅ Closed: Step 5 Tier 2 system hooks
