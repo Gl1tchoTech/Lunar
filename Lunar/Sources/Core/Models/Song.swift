@@ -59,6 +59,14 @@ final class Song {
     /// for scroll performance on the Library / Playlist list views.
     @Attribute(.externalStorage) var artwork: Data?
 
+    /// Relative lyrics file name (`.lrc`) inside
+    /// `Application Support/Lyrics/`, or `nil` if no lyrics are
+    /// imported. Mirrors `fileName`: never store an absolute URL.
+    /// Lyrics are **manual-only** per the design brief — the user
+    /// imports `.lrc` files at the song level; there's no online
+    /// fetch.
+    var lyricsFileName: String?
+
     // MARK: - Relationships
 
     @Relationship(deleteRule: .nullify) var album: Album?
@@ -85,7 +93,8 @@ final class Song {
         sampleRate: Double? = nil,
         bitDepth: Int? = nil,
         dateAdded: Date = Date(),
-        artwork: Data? = nil
+        artwork: Data? = nil,
+        lyricsFileName: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -105,5 +114,6 @@ final class Song {
         self.playCount = 0
         self.isFavorite = false
         self.artwork = artwork
+        self.lyricsFileName = lyricsFileName
     }
 }

@@ -64,6 +64,11 @@ final class AudioEngine: AudioPlayerInterface {
     private let timePitch = AVAudioUnitTimePitch()
     private let eq = EQController.makeUnit()
 
+    /// Cached copy of the most recently applied band array. Used by
+    /// `setEQEnabled(_:)` to restore the user's tuning when the EQ
+    /// is re-enabled after a bypass.
+    private var lastAppliedBands: [Float] = Array(repeating: 0, count: 10)
+
     // MARK: - Timers / subscriptions
 
     // MARK: - Engine-mirrored playback preferences
@@ -151,8 +156,31 @@ final class AudioEngine: AudioPlayerInterface {
         case .crossfade(let req, let secs):
             await crossfade(to: req, durationSeconds: secs)
         case .setVolume(let v):     setMasterVolume(v)
-        case .setEQ(let bands):     EQController.apply(bands: bands, to: eq)
+        case .setEQ(let bands):     applyEQ(bands: bands)
         }
+    }
+
+    /// Public bypass toggle. Re-applies the cached bands when re-
+    /// enabled so the user's tuning survives a temporary bypass.
+    /// Called by `LunarAppCoordinator` via `.onChange(of:)`.
+    func setEQEnabled(_ enabled: Bool) {
+        if enabled {
+            applyEQ(bands: lastAppliedBands)
+        } else {
+            EQController.bypass(eq)
+        }
+    }
+
+    /// Internal: apply bands + cache the *clamped* values for later
+    /// bypass-restore. Avoids re-calling the (expensive) AVAudioUnitEQ
+    /// band-setter twice per change.
+    private func applyEQ(bands: [Float]) {
+        let clamped = bands.map { min(12.0, max(-12.0, $0)) }
+        EQController.apply(bands: clamped, to: eq)
+        lastAppliedBands = clamped
+    }
+
+
     }
 
     // MARK: - Commands (public)

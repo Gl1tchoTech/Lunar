@@ -118,15 +118,14 @@ struct SettingsView: View {
     }
 
     // MARK: - Stubbed destination views
-    // Real sub-views (Player Style + App Theme) live in `Sources/Settings/`.
-    // The remainder are placeholders future tiers will replace.
+    // Player Style + App Theme + Playback Setting + Equalizer all live
+    // in `Sources/Settings/`. Only Language remains as a placeholder
+    // until translations ship.
 
     private var equalizerStub: some View {
-        StubPage(
-            title: "Equalizer",
-            message: "10-band DSP via AVAudioUnitEQ, with presets and reverb. Step 5 Tier 2.",
-            systemImage: "slider.vertical.3"
-        )
+        // Kept named the same to avoid touching the row above; the row
+        // now points straight at the real EqualizerView.
+        EqualizerView()
     }
 
     private var languageStub: some View {

@@ -12,6 +12,7 @@ struct NowPlayingView: View {
     @Environment(SleepTimer.self) private var sleepTimer
 
     @State private var presentingSleepSheet = false
+    @State private var presentingLyricsSheet = false
 
     var body: some View {
         let palette = themeManager.palette
@@ -34,6 +35,11 @@ struct NowPlayingView: View {
         .preferredColorScheme(.dark)
         .sheet(isPresented: $presentingSleepSheet) {
             SleepTimerSheet()
+        }
+        .sheet(isPresented: $presentingLyricsSheet) {
+            LyricsView()
+                .environment(engine)
+                .environment(themeManager)
         }
     }
 
@@ -58,6 +64,11 @@ struct NowPlayingView: View {
                 isActive: sleepTimer.isActive,
                 secondsRemaining: sleepTimer.secondsRemaining,
                 onTap: { presentingSleepSheet = true }
+            )
+
+            LyricsChip(
+                palette: palette,
+                onTap: { presentingLyricsSheet = true }
             )
 
             if engine.currentQueueIndex >= 0 && engine.queueSize > 1 {
@@ -141,6 +152,35 @@ private struct SleepTimerChip: View {
         let m = seconds / 60
         let s = seconds % 60
         return String(format: "%d:%02d", m, s)
+    }
+}
+
+// MARK: - LyricsChip
+
+/// Pill-shaped button in the Now Playing top chrome. Surfaces the
+/// synced-lyrics sheet when tapped. Companion to `SleepTimerChip`.
+/// Unlike the sleep chip we don't track per-tap state here — the
+/// sheet itself reads back whether lines exist and shows an empty
+/// state if the current song has no `.lrc` file.
+private struct LyricsChip: View {
+
+    let palette: PlayerThemePalette
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            Image(systemName: "text.alignleft")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(palette.primaryText)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule().fill(palette.railBackground)
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Lyrics")
+        .accessibilityHint("Opens the synced lyrics viewer")
     }
 }
 

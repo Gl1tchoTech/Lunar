@@ -26,6 +26,9 @@ struct LunarApp: App {
     /// User playback preferences (crossfade + gapless).
     @State private var playbackSettings = PlaybackSettings()
 
+    /// User equalizer preferences (10 bands + on/off + active preset).
+    @State private var eqSettings = EQSettings()
+
     /// App Theme settings (System / Light / Dark + accent color).
     @State private var appThemeSettings = AppThemeSettings()
 
@@ -47,12 +50,14 @@ struct LunarApp: App {
                 audioSession: appAudioSession,
                 audioEngine: audioEngine,
                 sleepTimer: sleepTimer,
-                playbackSettings: playbackSettings
+                playbackSettings: playbackSettings,
+                eqSettings: eqSettings
             )
             .environment(theme)
             .environment(audioEngine)
             .environment(sleepTimer)
             .environment(playbackSettings)
+            .environment(eqSettings)
             .environment(appThemeSettings)
             .preferredColorScheme(appThemeSettings.mode.colorScheme)
             .tint(appThemeSettings.accent.color)
@@ -86,6 +91,7 @@ private struct LunarAppCoordinator: View {
     let audioEngine: AudioEngine
     let sleepTimer: SleepTimer
     let playbackSettings: PlaybackSettings
+    let eqSettings: EQSettings
 
     /// Optional callback the host can use to log a song's natural
     /// completion via `LibraryService.logListenEvent`. Step 5 wires
@@ -124,6 +130,20 @@ private struct LunarAppCoordinator: View {
                     audioEngine.gaplessEnabled =
                         playbackSettings.gaplessEnabled
                 }
+
+                // Warm-up push of EQ state — bands are CLAMPED at
+                // write time by `EQSettings.bandBinding(at:)`, so we
+                // can trust them here. `Task` because `.send` is
+                // async (crosses the player-interface command queue).
+                let initialBands = eqSettings.bands
+                Task { await audioEngine.send(.setEQ(bands: initialBands)) }
+                audioEngine.setEQEnabled(eqSettings.isEnabled)
+            }
+            .onChange(of: eqSettings.bands) { _, newBands in
+                Task { await audioEngine.send(.setEQ(bands: newBands)) }
+            }
+            .onChange(of: eqSettings.isEnabled) { _, newEnabled in
+                audioEngine.setEQEnabled(newEnabled)
             }
     }
 }
