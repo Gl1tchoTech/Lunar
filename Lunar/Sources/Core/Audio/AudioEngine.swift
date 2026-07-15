@@ -58,6 +58,25 @@ final class AudioEngine: AudioPlayerInterface {
     /// to log a `ListenEvent` via `LibraryService.logListenEvent`.
     var onSongFinished: ((PlaybackRequest, TimeInterval) -> Void)?
 
+    /// Optional callback fired whenever `state` changes (after a
+    /// `PlayerState.Equatable` diff against the last notified value).
+    /// Used by `NowPlayingCenterManager` to mirror state into
+    /// `MPNowPlayingInfoCenter` so the Lock Screen / Control Center
+    /// stays in sync with `currentTime` (the progress tick fires every
+    /// 0.1 s; consumers can decide whether they care about that
+    /// granularity or want to debounce further).
+    ///
+    /// **When it fires**: any direct mutation of `state.currentTitle /
+    /// currentArtist / currentTime / duration / isPlaying / volume`,
+    /// plus the per-tick progress update. Compared with the previous
+    /// snapshot — if nothing changed the callback is suppressed.
+    var onStateChange: ((PlayerState, _ songID: PersistentIdentifier?) -> Void)?
+
+    /// Last snapshot passed to `onStateChange`. Used for diff-skip when
+    /// only `currentTime` ticks forward (the lock-screen scrubber is
+    /// happy with ~0.5 s cadence; pushing 10×/s is wasteful).
+    private var lastNotifiedState: PlayerState?
+
     private let engine = AVAudioEngine()
     private let playerA = AVAudioPlayerNode()
     private let playerB = AVAudioPlayerNode()
@@ -97,6 +116,17 @@ final class AudioEngine: AudioPlayerInterface {
 
     private let progressTimerInterval: TimeInterval = 0.1
     private let crossfadeTimerInterval: TimeInterval = 1.0 / 60.0
+
+    /// Push `state` to `onStateChange` if it differs from the last
+    /// notified value (PlayerState is Equatable). Called from every
+    /// state-mutating site so the Lock Screen / Control Center can
+    /// stay in sync without polling.
+    private func notifyStateChange() {
+        let new = state
+        guard new != lastNotifiedState else { return }
+        lastNotifiedState = new
+        onStateChange?(new, currentSongID)
+    }
 
     // MARK: - Init
 
@@ -192,6 +222,7 @@ final class AudioEngine: AudioPlayerInterface {
         } catch {
             assertionFailure("AudioEngine.start failed: \(error)")
         }
+        notifyStateChange()
     }
 
     func pause() {
@@ -199,6 +230,7 @@ final class AudioEngine: AudioPlayerInterface {
         progressTimer?.cancel()
         progressTimer = nil
         state.isPlaying = false
+        notifyStateChange()
     }
 
     func togglePlayPause() {
@@ -217,6 +249,7 @@ final class AudioEngine: AudioPlayerInterface {
         guard queueIndex + 1 < queue.count else {
             pause()
             state.currentTime = 0
+            notifyStateChange()
             return
         }
         queueIndex += 1
@@ -268,12 +301,14 @@ final class AudioEngine: AudioPlayerInterface {
         scheduleCurrentNode(from: time)
         currentNode.play()
         state.currentTime = time
+        notifyStateChange()
     }
 
     func setMasterVolume(_ volume: Float) {
         let clamped = min(1.0, max(0.0, volume))
         engine.mainMixerNode.outputVolume = clamped
         state.volume = clamped
+        notifyStateChange()
     }
 
     // MARK: - Queue
@@ -346,6 +381,7 @@ final class AudioEngine: AudioPlayerInterface {
         state.currentTime = 0
 
         scheduleCurrentNode(from: 0)
+        notifyStateChange()
     }
 
     /// Pre-decodes the next file on the main thread (file open is cheap)
@@ -378,6 +414,7 @@ final class AudioEngine: AudioPlayerInterface {
         state.currentTime = 0
         state.isPlaying = true
         startProgressTicker()
+        notifyStateChange()
     }
 
     private func scheduleCurrentNode(from offset: TimeInterval) {
@@ -444,6 +481,7 @@ final class AudioEngine: AudioPlayerInterface {
         } else {
             state.isPlaying = false
             state.currentTime = 0
+            notifyStateChange()
         }
     }
 
@@ -463,6 +501,10 @@ final class AudioEngine: AudioPlayerInterface {
         let sampleRate = file.processingFormat.sampleRate
         let seconds = Double(playerTime.sampleTime) / max(sampleRate, 1)
         state.currentTime = min(seconds, state.duration)
+        // No diff guard here: the manager layered on top will do its
+        // own Equatable check, and we want every wallclock-shaped tick
+        // to bubble up so the scrubber renders smoothly.
+        notifyStateChange()
     }
 
     // MARK: - Session events

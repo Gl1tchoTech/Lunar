@@ -16,6 +16,67 @@ All notable changes to **Lunar** are documented here. The format follows
 - **`LyricsChip`** — NEW chip in Now Playing top chrome (mirrors the existing `SleepTimerChip`). Tapping presents `LyricsView()` as a sheet.
 - **Lyrics `LyricsView` + Import flow** — the user picks `.lrc` from any source app (Files, On My iPhone, AirDrop, etc.) via the system `fileImporter`. After import, the song's lyrics are stored in Application Support and the parsed lines render in the LyricsView on the next `LyricsView` open.
 
+### Step 5 — Tier 3: System Hooks (Lock Screen, Remote Commands, AirPlay)
+
+Lunar now feels like a real music player on the Lock Screen and in
+Control Center. Three iOS-native surfaces wired end-to-end without
+restructuring the existing audio pipeline.
+
+- **`AudioEngine.onStateChange`** callback — `@MainActor` closure fired
+  from every state-mutating site (`play/pause/seek/load/crossfade/
+  tickProgress/setMasterVolume/handleNextNodeCompleted`). Backed by a
+  `PlayerState.Equatable` diff against the last notified snapshot so
+  repeated 0.1 s progress ticks don't spam listeners when nothing else
+  has changed (captures the `next()` end-of-queue pause + `previous()`
+  split paths too).
+- **`NowPlayingCenterManager`** (`Lunar/Sources/Core/Audio/NowPlayingCenterManager.swift`)
+  — NEW `@MainActor` `final class` that bridges the engine to:
+  - **`MPNowPlayingInfoCenter`** — title / artist / duration / elapsed
+    time / playback rate / default play rate / media type pushed into
+    `default().nowPlayingInfo` on every state change (re-issue) under
+    a structural Equatable guard.
+  - **`MPRemoteCommandCenter.shared()`** — play / pause / togglePlayPause /
+    nextTrack / previousTrack / skipForward (15 s) / skipBackward
+    (15 s) / changePlaybackPosition handlers, each forwarding to
+    `await engine.send(_)` from inside `Task { ... }`. `attach()` is
+    idempotent and primes a title-less placeholder so Control Center
+    shows the Lunar widget as soon as the app launches.
+  - **Artwork cache** — `[PersistentIdentifier: MPMediaItemArtwork]`
+    keyed by song; lazy UIImage decode via the injected
+    `artworkResolver` closure, downscale to 600 pt on the longest
+    side for memory safety, aspect-fit crop returned per requested
+    bounds via `MPMediaItemArtwork(boundsSize:request:)`.
+  - **`detach()`** cleared for completeness (clears now-playing info,
+    deregisters commands) — not currently called but ready for future
+    background-mode lifecycles.
+- **`AirPlayRouteButton`** (`Lunar/Sources/Features/NowPlaying/AirPlayRouteButton.swift`)
+  — NEW compact `UIViewRepresentable` over `AVRoutePickerView`,
+  28 × 28 in a `Capsule` filled with `palette.railBackground` to
+  match `SleepTimerChip` / `LyricsChip`. Sets both `tintColor`
+  (inactive) and `activeTintColor` (active) from the player-theme
+  palette so the glyph reads against the dark Cyber Neon
+  background and the accent glows on active route.
+- **`NowPlayingView.swift`** — `AirPlayRouteButton(palette: palette)`
+  dropped into the top chrome between `LyricsChip` and the queue
+  counter (single-row alignment preserved).
+- **`LunarAppCoordinator` (in `LunarApp.swift`)** — gained a
+  `modelContainer: ModelContainer` parameter; inside `.task`:
+  - constructs `NowPlayingCenterManager(audioEngine:, artworkResolver:
+    { id in container.mainContext.model(for: id) as? Song })`
+  - keeps the manager alive via `@State private var nowPlayingManager`
+  - calls `manager.attach()`, then installs
+    `audioEngine.onStateChange = { [weak manager] state, _ in
+    manager?.update(state, currentSongID: audioEngine.currentSongID) }`
+- **`NowPlayingCenterManagerTests`** (`Tests/LunarTests/NowPlayingCenterManagerTests.swift`)
+  — NEW test class (7 tests). Real in-memory `ModelContainer` +
+  `Song` inserts to produce legit `PersistentIdentifier` values, with
+  per-test bitmap fixtures from a synthetic 1×1 PNG hex blob.
+  Covers: cache hit on identical push, cache hit on state change
+  (same song), cache miss on song change, nil-artwork no-op,
+  pre-attach no-op, `detach()` clears the system-side info,
+  `attach()` is idempotent, and the pushed info dict carries every
+  expected `MPMediaItemProperty*` / `MPNowPlayingInfoProperty*` key.
+
 ### Step 5 — Tier 2 Part 5: 10-Band Equalizer
 
 - **`EQSettings`** (`Lunar/Sources/Core/Audio/EQSettings.swift`) — NEW `@MainActor @Observable final class`. Holds:

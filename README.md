@@ -12,6 +12,7 @@ Lunar is a beautifully crafted music player designed to make listening feel as g
 - **Local-first** — your music stays on your device (no cloud required)
 - **6 Player Themes** — **Cyber Neon** by default, plus **Vinyl / Lime**, **Aurora**, **Vivid Ocean**, **Sepia Wood**, **Pastel Playful**
 - **Real audio DSP** — 10-band `AVAudioUnitEQ` with 13 built-in presets + Custom, engine-driven crossfade, gapless playback
+- **System hooks** — Lock Screen / Control Center Now Playing card, full remote command set, AirPlay picker
 - **Synced lyrics** — manual `.lrc` file import (per-song), active-line auto-scroll, tap-to-seek
 - **SwiftData library** — Songs, Albums, Artists, Playlists, Listen Events
 - **Universal** — iPhone tab bar, iPad split view
@@ -102,6 +103,12 @@ All themes share the same information architecture — only the visual chrome ch
 
 ---
 
+### ✅ Step 5 — Tier 3: System Hooks
+- [x] **`NowPlayingCenterManager`** — bridges `AudioEngine` → `MPNowPlayingInfoCenter` (Lock Screen / Control Center) + registers `MPRemoteCommandCenter` handlers (play / pause / toggle / next / previous / skipForward 15 s / skipBackward 15 s / changePlaybackPosition) that forward to `engine.send(_:)`. Built-in artwork cache keyed by `PersistentIdentifier`.
+- [x] **`AirPlayRouteButton`** — `UIViewRepresentable` over `AVRoutePickerView`, tinted to the active player-theme palette, dropped into the Now Playing top chrome.
+- [x] **`AudioEngine.onStateChange` callback** — diffed (Equatable) notification fired from every state-mutating site (`play/pause/seek/load/crossfade/tickProgress/setMasterVolume`). 0.1 s progress ticks don't spam listeners.
+- [x] **`NowPlayingCenterManagerTests`** — 7 tests covering artwork cache hit/miss, diff-skip, pre-attach no-op, detach clearing, attach idempotency, full info dict keys.
+
 ## 🛣 Roadmap
 
 ### ✅ Step 1 — Scaffold (`af3708a`)
@@ -148,9 +155,23 @@ All themes share the same information architecture — only the visual chrome ch
 - [x] **AudioEngine queue** — in-memory `[PlaybackRequest]`, `enqueueNext`, `playQueue`, `next()`, `previous()` walking the queue, automatic advance in `handleNextNodeCompleted`. Race-gate via `isTransitioning`.
 - [x] **Settings polish** — `PlayerStyleView` (six theme preview cards, tap to apply), `AppThemeView` (System / Light / Dark segmented picker + 3×2 accent swatch grid persisted via `AppThemeSettings`). Equalizer / Playback / Language / About stay stub views for Step 5.
 
-### ⏭ Step 5 Tier 2 onwards
-- [ ] Tier 2 — System hooks for "feels like a music player" (`MPNowPlayingInfoCenter` + `MPRemoteCommandCenter` + `AVRoutePickerView`)
-- [ ] Tier 2 — Settings polish (Sleep-timer UI + Playback Settings + Lyrics `.lrc` import + Equalizer 10-band sliders)
+### ⏭ Up next (Tier 4 → Tier 7)
+- [ ] Tier 4 — Settings polish: real About view (version, build, credits), Feedback / Rate Us / Privacy Policy destinations, Language stub cleanup
+- [ ] Tier 5 — Player UX polish: persist Shuffle + Repeat across relaunch, "My Favorites" smart playlist tile, Library search bar, full Song Info sheet
+- [ ] Tier 6 — Import surface expansion: Other Apps handoff, branded Cloud Providers (Wi-Fi Drive explicitly deferred per user)
+- [ ] Tier 7 — Browse downloader / streamer (placeholder today; user-deferred until they say otherwise)
+
+### ✅ Closed: Step 5 Tier 2 system hooks
+- [x] `MPNowPlayingInfoCenter` — title / artist / duration / elapsed / rate / media type pushed on every state change
+- [x] `MPRemoteCommandCenter` — full standard transport set + 15 s skip + scrub-from-lock-screen
+- [x] `AVRoutePickerView` — AirPlay / external-output pill in the Now Playing chrome
+- [x] Artwork cache — `MPMediaItemArtwork` per song, lazily decoded from `Song.artwork` bytes, downscaled to 600 pt
+
+### ✅ Closed: Step 5 Tier 2 settings (parts 1–5)
+- [x] Sleep-timer UI in Now Playing + Settings (`Settings ▸ Sleep Timer`)
+- [x] Playback Settings (crossfade + gapless, `Settings ▸ Playback Setting`)
+- [x] Lyrics `.lrc` import (manual, per-song, `LyricsView` sheet)
+- [x] Equalizer 10-band sliders (`Settings ▸ Equalizer`)
 - [ ] Tier 2 — `"My Favorites"` smart playlist + Shuffle / Repeat state persistence
 - [ ] Tier 3 — Search (Library) + Song Info sheet (rename / add to playlist / share / show in Finder)
 - [ ] Tier 4 — Import surface expansion: Wi-Fi Drive · Other Apps · Cloud Providers

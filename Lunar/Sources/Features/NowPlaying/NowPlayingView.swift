@@ -71,6 +71,8 @@ struct NowPlayingView: View {
                 onTap: { presentingLyricsSheet = true }
             )
 
+            AirPlayRouteButton(palette: palette)
+
             if engine.currentQueueIndex >= 0 && engine.queueSize > 1 {
                 Text("\(engine.currentQueueIndex + 1) / \(engine.queueSize)")
                     .font(Typography.caption1)

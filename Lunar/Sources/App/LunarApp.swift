@@ -51,7 +51,8 @@ struct LunarApp: App {
                 audioEngine: audioEngine,
                 sleepTimer: sleepTimer,
                 playbackSettings: playbackSettings,
-                eqSettings: eqSettings
+                eqSettings: eqSettings,
+                modelContainer: container
             )
             .environment(theme)
             .environment(audioEngine)
@@ -92,6 +93,11 @@ private struct LunarAppCoordinator: View {
     let sleepTimer: SleepTimer
     let playbackSettings: PlaybackSettings
     let eqSettings: EQSettings
+    /// SwiftData container — used by the NowPlayingCenterManager wiring
+    /// to resolve a song's artwork bytes on the main context. Kept as
+    /// `let` because views recreate the struct on every draw; lifecycle
+    /// is owned by `LunarApp` above.
+    let modelContainer: ModelContainer
 
     /// Optional callback the host can use to log a song's natural
     /// completion via `LibraryService.logListenEvent`. Step 5 wires
@@ -99,6 +105,12 @@ private struct LunarAppCoordinator: View {
     var onSongFinished: ((PlaybackRequest, TimeInterval) -> Void)?
 
     @State private var didWire = false
+
+    /// Strongly-held reference to the system-hook manager. Keep this
+    /// in `@State` so SwiftUI's view-storage keeps the manager alive
+    /// across redraws; the audio engine's `onStateChange` closure also
+    /// weakly captures it.
+    @State private var nowPlayingManager: NowPlayingCenterManager?
 
     var body: some View {
         RootView()
@@ -138,6 +150,31 @@ private struct LunarAppCoordinator: View {
                 let initialBands = eqSettings.bands
                 Task { await audioEngine.send(.setEQ(bands: initialBands)) }
                 audioEngine.setEQEnabled(eqSettings.isEnabled)
+
+                // Tier 3 — wire MPNowPlayingInfoCenter + MPRemoteCommandCenter
+                // through `NowPlayingCenterManager`. The manager's
+                // `attach()` registers remote-command handlers + primes
+                // the Now Playing info dict so the Lock Screen /
+                // Control Center surfaces Lunar as soon as the app
+                // starts (even before any song plays).
+                let manager = NowPlayingCenterManager(
+                    audioEngine: audioEngine,
+                    artworkResolver: { id in
+                        // Main-context SwiftData fetch. The container's
+                        // mainContext is implicitly @MainActor so safe
+                        // to read from our closure (which runs on the
+                        // main queue via the audio engine callback).
+                        if let song = modelContainer.mainContext.model(for: id) as? Song {
+                            return song.artwork
+                        }
+                        return nil
+                    }
+                )
+                nowPlayingManager = manager
+                manager.attach()
+                audioEngine.onStateChange = { [weak manager] state, _ in
+                    manager?.update(state, currentSongID: audioEngine.currentSongID)
+                }
             }
             .onChange(of: eqSettings.bands) { _, newBands in
                 Task { await audioEngine.send(.setEQ(bands: newBands)) }
