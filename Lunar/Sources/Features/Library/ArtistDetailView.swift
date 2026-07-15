@@ -3,6 +3,7 @@ import SwiftData
 
 /// Library — Artist detail. Pushes when a row in `ArtistsView` is tapped.
 /// Shows the artist's songs and the album(s) they're credited on.
+@MainActor
 struct ArtistDetailView: View {
 
     let artist: Artist

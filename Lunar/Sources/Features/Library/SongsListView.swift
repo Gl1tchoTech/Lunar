@@ -72,7 +72,7 @@ struct SongsListView: View {
     /// Empty-state routing — three distinct copy variants so the user
     /// gets the right context (no library vs. no match vs. happy path).
     @ViewBuilder
-    private var content: some View {
+    var body: some View {
         if songs.isEmpty {
             EmptyState(
                 title: "No music yet",

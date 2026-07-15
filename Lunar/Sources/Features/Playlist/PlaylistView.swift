@@ -225,6 +225,16 @@ struct SmartPlaylistRoute: Hashable {
     let songs: [Song]
 }
 
+// Static factories used from `navPath.append(.smart(.favorites(...)))`.
+// Mirrors the same shape as the SmartPlaylistTile.Kind extension
+// below so `PlaylistNavEnum.smart(_:)` callers don't need to know
+// about the Kind enum.
+extension SmartPlaylistRoute {
+    static func favorites(_ songs: [Song])      -> SmartPlaylistRoute { .init(kind: .favorites, songs: songs) }
+    static func mostPlayed(_ songs: [Song])     -> SmartPlaylistRoute { .init(kind: .mostPlayed, songs: songs) }
+    static func recentlyPlayed(_ songs: [Song]) -> SmartPlaylistRoute { .init(kind: .recentlyPlayed, songs: songs) }
+}
+
 /// Maps a `SmartPlaylistTile.Kind` to a `PlaylistDetailView.HeroStyle`.
 ///
 /// `My Favorites` uses the heart hero (matches `PlaylistDetailView`'s

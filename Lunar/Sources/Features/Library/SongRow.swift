@@ -27,7 +27,7 @@ struct SongRow: View {
             }
             Spacer(minLength: Spacing.s)
             Text(durationString(song.duration))
-                .font(Typography.caption)
+                .font(Typography.caption2)
                 .foregroundStyle(ColorTokens.textTertiary)
                 .monospacedDigit()
         }

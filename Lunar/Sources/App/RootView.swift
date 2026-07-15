@@ -48,7 +48,7 @@ struct RootView: View {
     }
 
     private var sidebar: some View {
-        List(selection: $selectedTab) {
+        List {
             Section {
                 ForEach(AppTab.allCases) { tab in
                     NavigationLink(value: tab) {
