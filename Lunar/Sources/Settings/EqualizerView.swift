@@ -85,12 +85,23 @@ struct EqualizerView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    // Belt-and-suspenders @MainActor annotation: `EQSettings` is
+    // annotated `@MainActor @Observable` (with stored properties now
+    // explicitly `nonisolated`, see `EQSettings.swift`'s doc comments
+    // for the rationale). Marking these computed properties with
+    // explicit `@MainActor` ensures the reads compile cleanly even
+    // under stricter Swift 6 concurrency settings that the project
+    // may opt into later. Costs nothing at runtime and keeps the
+    // semantic intent (`isEnabledFooter`/`isAllFlat` are UI-time
+    // computations) declarative.
+    @MainActor
     private var isEnabledFooter: String {
         settings.isEnabled
             ? "ON — your custom DSP is applied in-line with the audio. Tap below to disable for a clean bypass."
             : "OFF — audio passes through untouched. The band values below are preserved for when you re-enable."
     }
 
+    @MainActor
     private var isAllFlat: Bool {
         settings.bands.allSatisfy { abs($0) < 0.05 }
     }

@@ -2,6 +2,7 @@ import Foundation
 import AVFoundation
 import Observation
 import Combine
+import SwiftData
 
 /// Real `AVAudioEngine`-backed player.
 ///

@@ -212,8 +212,7 @@ struct PlaylistView: View {
         let h = total / 3600
         let m = total / 60
         let s = total % 60
-        if h > 0 { return "\(h):\(String(format: "%02d", m)):\(String(format: "%02d", s))"
-" }
+        if h > 0 { return "\(h):\(String(format: "%02d", m)):\(String(format: "%02d", s))" }
         return "\(m):\(String(format: "%02d", s))"
     }
 }
