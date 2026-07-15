@@ -126,7 +126,7 @@ enum AudioMetadataExtractor {
         // These are matched on `identifier` (raw string), not
         // `commonKey` (the standardized CommonMetadata mapping),
         // because `findItem(_:key:)` only works for Common keys.
-        let trackNumber: Int? = {
+        let trackNumber: Int? = { () -> Int? in
             let item = findItemByIdentifier(
                 metadata,
                 identifier: AVMetadataKey.iTunesMetadataKeyTrackNumber
@@ -146,7 +146,7 @@ enum AudioMetadataExtractor {
         }()
 
         // MARK: year — uses .dateValue / .stringValue
-        let year: Int? = {
+        let year: Int? = { () -> Int? in
             let item = findItem(commonMeta, key: .commonKeyCreationDate)
                 ?? findItem(metadata,   key: .commonKeyCreationDate)
             guard let item else { return nil }
@@ -207,7 +207,13 @@ enum AudioMetadataExtractor {
         _ items: [AVMetadataItem],
         identifier: AVMetadataKey
     ) -> AVMetadataItem? {
-        items.first { $0.identifier == identifier.rawValue }
+        items.first {
+            // `$0.identifier` is `AVMetadataIdentifier?` under
+            // Xcode 15.4 / iOS 17 SDK; pull the `String` rawValue
+            // out so we can compare against `identifier.rawValue`.
+            guard let itemID = $0.identifier?.rawValue else { return false }
+            return itemID == identifier.rawValue
+        }
     }
 
     /// Read the first string metadata tag. Uses `AVMetadataItem.stringValue`
@@ -253,10 +259,9 @@ enum AudioMetadataExtractor {
         let estimatedBitsPerSecond = track.estimatedDataRate
         if estimatedBitsPerSecond > 0 {
             bitrate = Int(estimatedBitsPerSecond)
-        }
-
-        for desc in track.formatDescriptions {
-            guard let basic = CMAudioFormatDescriptionGetStreamBasicDescription(desc)
+        }            for anyDesc in track.formatDescriptions {
+            guard let desc = anyDesc as? CMFormatDescription,
+                  let basic = CMAudioFormatDescriptionGetStreamBasicDescription(desc)
             else { continue }
             if sampleRate == nil { sampleRate = basic.pointee.mSampleRate }
             if bitDepth   == nil { bitDepth   = Int(basic.pointee.mBitsPerChannel) }

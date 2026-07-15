@@ -11,6 +11,18 @@ struct ImportResult: Equatable, Sendable {
     /// Files that failed to copy or extract. Each entry carries the
     /// original (not-yet-imported) source URL plus the error.
     let failed: [(url: URL, message: String)]
+
+    /// Manual `==` because arrays of `(URL, String)` tuples don't
+    /// synthesize `Equatable`. We compare count + element-wise first so
+    /// a single mismatch short-circuits as `false`.
+    static func == (lhs: ImportResult, rhs: ImportResult) -> Bool {
+        guard lhs.inserted == rhs.inserted, lhs.skipped == rhs.skipped else { return false }
+        guard lhs.failed.count == rhs.failed.count else { return false }
+        for (l, r) in zip(lhs.failed, rhs.failed) {
+            if l.url != r.url || l.message != r.message { return false }
+        }
+        return true
+    }
 }
 
 /// @MainActor orchestrator for Tier 1 — "Import → Local Files".

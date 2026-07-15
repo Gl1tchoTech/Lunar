@@ -32,14 +32,14 @@ final class QueueSettings {
 
     // MARK: - Stored values
 
-    var shuffleMode: ShuffleMode = Self.defaultShuffle {
+    var shuffleMode: ShuffleMode = QueueSettings.defaultShuffle {
         didSet {
             UserDefaults.standard.set(shuffleMode.rawValue, forKey: Self.shuffleKey)
             onChange?()
         }
     }
 
-    var repeatMode: RepeatMode = Self.defaultRepeat {
+    var repeatMode: RepeatMode = QueueSettings.defaultRepeat {
         didSet {
             UserDefaults.standard.set(repeatMode.rawValue, forKey: Self.repeatKey)
             onChange?()

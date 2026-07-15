@@ -43,7 +43,7 @@ final class PlaybackSettings {
 
     // MARK: - Stored values
 
-    var crossfadeDurationSeconds: Double = Self.defaultCrossfadeSeconds {
+    var crossfadeDurationSeconds: Double = PlaybackSettings.defaultCrossfadeSeconds {
         didSet {
             UserDefaults.standard.set(
                 crossfadeDurationSeconds,
@@ -53,7 +53,7 @@ final class PlaybackSettings {
         }
     }
 
-    var gaplessEnabled: Bool = Self.defaultGapless {
+    var gaplessEnabled: Bool = PlaybackSettings.defaultGapless {
         didSet {
             UserDefaults.standard.set(
                 gaplessEnabled,

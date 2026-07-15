@@ -14,6 +14,7 @@ import SwiftUI
 /// **Sleep Timer** uses a Button + sheet pattern so the same
 /// `SleepTimerSheet` powers both this row and the moon chip in
 /// Now Playing.
+@MainActor
 struct SettingsView: View {
 
     @Environment(SleepTimer.self) private var sleepTimer

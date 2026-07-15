@@ -277,7 +277,7 @@ final class AudioEngine: AudioPlayerInterface {
                 // `rampCrossfade` handles the divide-by-zero), > 0 s =
                 // classic overlap fade.
                 await self.send(.crossfade(
-                    request,
+                    to: request,
                     durationSeconds: self.crossfadeDurationSeconds
                 ))
             } else {

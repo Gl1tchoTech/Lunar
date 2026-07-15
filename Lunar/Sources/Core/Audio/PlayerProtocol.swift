@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 /// State snapshot published by the audio player. SwiftUI views bind
 /// directly to these fields (via `@Observable` on the concrete impl).

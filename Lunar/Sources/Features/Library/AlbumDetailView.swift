@@ -4,6 +4,7 @@ import SwiftData
 /// Library — Album detail. Pushes when a row in `AlbumsView` is tapped.
 /// Shows the album's composing songs. Tapping a song plays it via
 /// `LibraryService.playbackRequests(_:)` and queues the rest.
+@MainActor
 struct AlbumDetailView: View {
 
     let album: Album
