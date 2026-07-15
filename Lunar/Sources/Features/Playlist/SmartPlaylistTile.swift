@@ -87,7 +87,7 @@ struct SmartPlaylistTile: View {
                         .font(Typography.title2)
                         .foregroundStyle(ColorTokens.textPrimary)
                     Text("\(songCount) song\(songCount == 1 ? "" : "s") | \(formatTotal(totalDuration))")
-                        .font(Typography.subheadline)
+                        .font(Typography.subhead)
                         .foregroundStyle(ColorTokens.textSecondary)
                         .monospacedDigit()
                 }

@@ -7,6 +7,7 @@ import SwiftData
 /// - **User-created playlists** — `heroStyle = .icon`
 ///
 /// Push from `PlaylistView`. Tapping a song plays it + opens Now Playing.
+@MainActor
 struct PlaylistDetailView: View {
 
     enum HeroStyle {
@@ -107,7 +108,7 @@ struct PlaylistDetailView: View {
                     .foregroundStyle(ColorTokens.textPrimary)
                 if let subtitle {
                     Text(subtitle)
-                        .font(Typography.subheadline)
+                        .font(Typography.subhead)
                         .foregroundStyle(ColorTokens.textSecondary)
                         .monospacedDigit()
                 }
@@ -129,7 +130,7 @@ struct PlaylistDetailView: View {
                     .foregroundStyle(ColorTokens.textPrimary)
                 if let subtitle {
                     Text(subtitle)
-                        .font(Typography.subheadline)
+                        .font(Typography.subhead)
                         .foregroundStyle(ColorTokens.textSecondary)
                         .monospacedDigit()
                 }
@@ -151,7 +152,7 @@ struct PlaylistDetailView: View {
                     .foregroundStyle(ColorTokens.textPrimary)
                 if let subtitle {
                     Text(subtitle)
-                        .font(Typography.subheadline)
+                        .font(Typography.subhead)
                         .foregroundStyle(ColorTokens.textSecondary)
                         .monospacedDigit()
                 }

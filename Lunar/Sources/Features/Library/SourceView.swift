@@ -66,7 +66,7 @@ struct SourceView: View {
             Text("Source (\(songs.count))")
                 .foregroundStyle(ColorTokens.textSecondary)
         }
-        .font(Typography.subheadline)
+        .font(Typography.subhead)
         .foregroundStyle(ColorTokens.textPrimary)
         .padding(.vertical, Spacing.s)
     }

@@ -16,6 +16,7 @@ import SwiftData
 /// `@Query` is re-bound to a fresh `Query(filter:nil, sort:)`. The
 /// `searchText` parameter is a **debounced** copy (250 ms in
 /// `LibraryView.task(id:)`) so we don't refilter on every keystroke.
+@MainActor
 struct SongsListView: View {
 
     let sortDescriptor: SortDescriptor<Song>
@@ -184,7 +185,7 @@ struct SongsListView: View {
                 Text("(\(songs.count))")
                     .foregroundStyle(ColorTokens.textTertiary)
             }
-            .font(Typography.subheadline)
+            .font(Typography.subhead)
             .foregroundStyle(ColorTokens.textPrimary)
             .padding(.vertical, Spacing.s)
         }

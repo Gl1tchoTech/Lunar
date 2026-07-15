@@ -11,6 +11,7 @@ import SwiftUI
 /// **Queue mode glyphs** (always reflect the live `QueueSettings`):
 /// - **shuffle** — `shuffle` (off) → `shuffle.circle.fill` (on, accent-tinted)
 /// - **repeat** — `repeat` (off) → `repeat.circle.fill` (all) → `repeat.1.circle.fill` (one)
+@MainActor
 struct TransportRow: View {
 
     @Environment(AudioEngine.self) private var engine

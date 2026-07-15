@@ -10,6 +10,7 @@ import SwiftData
 /// Presented from `SongRow.contextMenu` -> "Song Info" via the host
 /// view's `.sheet(isPresented:)` modifier (each hosting surface
 /// (Library / Playlist detail) keeps its own `@State`.
+@MainActor
 struct SongInfoSheet: View {
 
     let song: Song

@@ -12,6 +12,7 @@ import SwiftUI
 /// in lock-step. Styling reads the active Player Theme via the shared
 /// `PlayerThemeManager` so the chip color tracks whatever theme the
 /// user picked.
+@MainActor
 struct SleepTimerSheet: View {
 
     @Environment(SleepTimer.self) private var timer
@@ -146,7 +147,7 @@ private struct DurationPill: View {
         Button(action: onSelect) {
             VStack(spacing: 4) {
                 Text(labelTitle)
-                    .font(Typography.bodyBold)
+                    .font(Typography.headline)
                     .foregroundStyle(
                         isSelected ? .black : palette.primaryText
                     )

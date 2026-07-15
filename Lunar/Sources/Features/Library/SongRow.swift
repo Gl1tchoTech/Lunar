@@ -21,7 +21,7 @@ struct SongRow: View {
                     .foregroundStyle(ColorTokens.textPrimary)
                     .lineLimit(1)
                 Text(song.artist)
-                    .font(Typography.subheadline)
+                    .font(Typography.subhead)
                     .foregroundStyle(ColorTokens.textSecondary)
                     .lineLimit(1)
             }

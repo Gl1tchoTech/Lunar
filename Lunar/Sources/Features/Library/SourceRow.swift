@@ -26,7 +26,7 @@ struct SourceRow: View {
                     .foregroundStyle(ColorTokens.textPrimary)
                     .lineLimit(1)
                 Text("\(songCount) song\(songCount == 1 ? "" : "s") | \(formatTotal(totalDuration))")
-                    .font(Typography.subheadline)
+                    .font(Typography.subhead)
                     .foregroundStyle(ColorTokens.textSecondary)
                     .monospacedDigit()
             }
