@@ -47,6 +47,19 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
+      - name: Verify generated project format
+        # Defensive logging: the project.yml xcodeVersion: "14.0" pin
+        # (see project.yml options.) forces XcodeGen to emit pbxproj
+        # objectVersion = 56 regardless of the host's xcode-select. If
+        # that ever drifts (XcodeGen option renamed, runner image change,
+        # someone removes the pin), the actual objectVersion +
+        # compatibilityVersion values print into the GHA log BEFORE
+        # xcodebuild fails with an opaque "future Xcode project file
+        # format (N)" error. Exits 0 even when grep matches (it always
+        # does here) — this step exists purely for log clarity.
+        run: |
+          grep -nE 'objectVersion|compatibilityVersion' Lunar.xcodeproj/project.pbxproj
+
       - name: Run unit + snapshot tests (Debug on iPhone 15 simulator)
         # We deliberately do NOT pipe to xcpretty here: a non-zero exit from
         # xcodebuild must fail the job. xcpretty is not pre-installed on
