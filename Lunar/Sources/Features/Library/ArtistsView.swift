@@ -53,7 +53,7 @@ struct ArtistsView: View {
             Text(header)
                 .foregroundStyle(ColorTokens.textSecondary)
         }
-        .font(Typography.subheadline)
+        .font(Typography.subhead)
         .foregroundStyle(ColorTokens.textPrimary)
         .padding(.vertical, Spacing.s)
     }

@@ -149,7 +149,7 @@ struct LibraryView: View {
                 } label: {
                     VStack(spacing: 4) {
                         Text(tab.label)
-                            .font(Typography.subheadline)
+                            .font(Typography.subhead)
                             .foregroundStyle(
                                 tab == selectedTab
                                     ? ColorTokens.textPrimary

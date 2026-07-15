@@ -20,7 +20,7 @@ struct LocalPlaylistRow: View {
                     .foregroundStyle(ColorTokens.textPrimary)
                     .lineLimit(1)
                 Text("\(playlist.songs.count) song\(playlist.songs.count == 1 ? "" : "s") | \(formatTotal(playlistDuration))")
-                    .font(Typography.subheadline)
+                    .font(Typography.subhead)
                     .foregroundStyle(ColorTokens.textSecondary)
                     .monospacedDigit()
                     .lineLimit(1)

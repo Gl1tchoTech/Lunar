@@ -51,7 +51,7 @@ struct AlbumsView: View {
             Text("Album name (\(albums.count))")
                 .foregroundStyle(ColorTokens.textSecondary)
         }
-        .font(Typography.subheadline)
+        .font(Typography.subhead)
         .foregroundStyle(ColorTokens.textPrimary)
         .padding(.vertical, Spacing.s)
     }

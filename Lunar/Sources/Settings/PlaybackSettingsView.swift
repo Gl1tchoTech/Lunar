@@ -71,7 +71,7 @@ struct PlaybackSettingsView: View {
                     .font(Typography.caption1)
                     .foregroundStyle(ColorTokens.textSecondary)
                 Text(summary)
-                    .font(Typography.bodyBold)
+                    .font(Typography.headline)
                     .foregroundStyle(ColorTokens.textPrimary)
             }
         }
@@ -104,11 +104,11 @@ private struct CrossfadeSliderRow: View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             HStack {
                 Text("Duration")
-                    .font(Typography.bodyBold)
+                    .font(Typography.headline)
                     .foregroundStyle(ColorTokens.textPrimary)
                 Spacer()
                 Text(label)
-                    .font(Typography.bodyBold)
+                    .font(Typography.headline)
                     .foregroundStyle(ColorTokens.appAccent)
                     .monospacedDigit()
             }

@@ -19,7 +19,7 @@ struct AlbumRow: View {
                     .foregroundStyle(ColorTokens.textPrimary)
                     .lineLimit(1)
                 Text(album.artist)
-                    .font(Typography.subheadline)
+                    .font(Typography.subhead)
                     .foregroundStyle(ColorTokens.textSecondary)
                     .lineLimit(1)
                 Text(footerText)
