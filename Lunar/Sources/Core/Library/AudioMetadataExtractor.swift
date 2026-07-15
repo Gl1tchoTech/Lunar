@@ -154,7 +154,7 @@ enum AudioMetadataExtractor {
                 return Calendar.current.component(.year, from: asDate)
             }
             if let asStr = item.stringValue {
-                return asStr.prefix(4)).intValue
+                return asStr.prefix(4).intValue
             }
             return nil
         }()
@@ -259,9 +259,9 @@ enum AudioMetadataExtractor {
         let estimatedBitsPerSecond = track.estimatedDataRate
         if estimatedBitsPerSecond > 0 {
             bitrate = Int(estimatedBitsPerSecond)
-             }            
+        }
         for anyDesc in track.formatDescriptions {
-            guard let desc = anyDesc as! CMFormatDescription,
+            guard let desc = anyDesc as? CMFormatDescription,
                   let basic = CMAudioFormatDescriptionGetStreamBasicDescription(desc)
             else { continue }
             if sampleRate == nil { sampleRate = basic.pointee.mSampleRate }
