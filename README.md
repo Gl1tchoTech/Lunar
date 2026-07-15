@@ -155,8 +155,13 @@ All themes share the same information architecture — only the visual chrome ch
 - [x] **AudioEngine queue** — in-memory `[PlaybackRequest]`, `enqueueNext`, `playQueue`, `next()`, `previous()` walking the queue, automatic advance in `handleNextNodeCompleted`. Race-gate via `isTransitioning`.
 - [x] **Settings polish** — `PlayerStyleView` (six theme preview cards, tap to apply), `AppThemeView` (System / Light / Dark segmented picker + 3×2 accent swatch grid persisted via `AppThemeSettings`). Equalizer / Playback / Language / About stay stub views for Step 5.
 
-### ⏭ Up next (Tier 4 → Tier 7)
-- [ ] Tier 4 — Settings polish: real About view (version, build, credits), Feedback / Rate Us / Privacy Policy destinations, Language stub cleanup
+### ✅ Step 5 — Tier 4: Settings polish
+- [x] **`AppMetadata`** — single source of truth for `version`, `build`, `bundleIdentifier`, `displayName`, `repositoryURL`, `copyrightYear`, plus a `versionAndBuild` format helper. Reads `CFBundleShortVersionString` / `CFBundleVersion` at runtime so a TestFlight bump shows up in About without touching Swift.
+- [x] **`AboutView`** — Settings ▸ About, real destination. Version / Build / Bundle labels, Source-on-GitHub button + URL link, Credits (UI / Audio / Storage / Theme) section, `🌙 Lunar · © <year>` footer.
+- [x] **SettingsView cleanup** — removed Language stub row + duplicate inline Version/Build/Made-with section (now in About). About row added between Settings section and the deliberate Feedback / Rate Us / Privacy stubs.
+- [x] **`AppMetadataTests`** — 7 tests pinning the version+build format, repo URL host + path, bundle ID, copyright year.
+
+### ⏭ Up next (Tier 5 → Tier 7)
 - [ ] Tier 5 — Player UX polish: persist Shuffle + Repeat across relaunch, "My Favorites" smart playlist tile, Library search bar, full Song Info sheet
 - [ ] Tier 6 — Import surface expansion: Other Apps handoff, branded Cloud Providers (Wi-Fi Drive explicitly deferred per user)
 - [ ] Tier 7 — Browse downloader / streamer (placeholder today; user-deferred until they say otherwise)

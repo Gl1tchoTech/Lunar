@@ -6,6 +6,21 @@ All notable changes to **Lunar** are documented here. The format follows
 
 ## [Unreleased]
 
+### Step 5 — Tier 4: Settings polish ✅
+
+- **`AppMetadata`** (`Lunar/Sources/Core/Config/AppMetadata.swift`) — NEW single source of truth for app-level data: `version` (reads `CFBundleShortVersionString`), `build` (reads `CFBundleVersion`), `bundleIdentifier`, `displayName`, `repositoryURL` (`https://github.com/Gl1tchoTech/Lunar`), and `copyrightYear`. Computed once at process launch. `versionAndBuild` formats as `"<version> (<build>)"` so Views don't reimplement the layout. Falls back to `"unknown"` when keys are missing so misconfiguration surfaces loudly instead of silently in the UI.
+- **`AboutView`** (`Lunar/Sources/Features/Settings/AboutView.swift`) — NEW real destination at **Settings ▸ About**. Four sections:
+  1. **Identity** — `Version` (`LabeledContent` with `AppMetadata.versionAndBuild`, monospaced digits), `Build` (`monospacedDigit`), `Bundle` (full bundle ID, truncating middle, caption-sized, tertiary tint so it doesn't compete visually).
+  2. **Source** — a Button-styled "Source on GitHub" row that calls `openURL(AppMetadata.repositoryURL)` + a `Link` row echoing the full URL. Section footer notes "Lunar is local-first. The source tree is the spec."
+  3. **Credits** — UI (SwiftUI + iOS 17+) · Audio (AVAudioEngine + AVAudioUnitEQ) · Storage (SwiftData @Model) · Theme (Cyber Neon · Purple accent). All rows use the same `LabeledContent` shape as Identity for visual consistency.
+  4. **Footer** — centered `🌙 Lunar` glyph followed by `Made with care in Xcode · © <current year>`. Year is computed via `Calendar.current.component(.year, from: Date())` so it stays accurate across midnight on Dec 31.
+- **`SettingsView` cleanup**:
+  - Removed the `Language` stub row + `languageStub` helper. iOS follows the device locale automatically and Lunar ships en-only; no per-app override is exposed.
+  - Removed the inline duplicate Version / Build / Made-with section from the bottom of Settings — that data now lives in About.
+  - Replaced the `equalizerStub` indirection with a direct `EqualizerView()` reference (the wrapper comment was dead weight).
+  - Added a single `About` row in its own Section between the Settings section and the deliberate Stub rows (Feedback / Rate Us / Privacy).
+- **`AppMetadataTests`** (`Tests/LunarTests/AppMetadataTests.swift`) — NEW, 7 tests. Pins: `version != "unknown"` + non-empty in test bundle; same for `build`; `versionAndBuild` contains parentheses + starts with `version` + ends with `build`; repo URL scheme `https` + host `github.com` + path `/Gl1tchoTech/Lunar` (catches accidental `git@…` SSH URLs the `Link` view wouldn't render); bundle ID equals `com.gl1tchotech.lunar`; copyright year equals current calendar year; display name equals `Lunar`.
+
 ### Step 5 — Tier 2 Part 4: Synced Lyrics (`.lrc` import)
 
 - **`Song.lyricsFileName: String?`** — new SwiftData field on `Song`. Stores the *relative* file name inside `Application Support/Lyrics/`; never an absolute URL (sandbox path may rotate on update/restore). Mirrors `Song.fileName` semantics exactly.

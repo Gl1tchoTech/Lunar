@@ -1,11 +1,19 @@
 import SwiftUI
 
-/// Settings tab. Row-driven nav. Most destinations are still stubs
-/// (Equalizer/Playback/Language/About) — replaced in Phase 5.
+/// Settings tab. Row-driven nav.
 ///
-/// **Sleep Timer** is the only Settings row that is fully wired. It
-/// pushes the same `SleepTimerSheet` used by the moon chip in Now
-/// Playing, so behaviour stays consistent across surfaces.
+/// **Tier 4** (current pass):
+///   • Equalizer, Playback Setting, About — all real destinations.
+///   • Language stub row was removed — iOS follows the device locale
+///     automatically and Lunar ships en-only for now; no per-app
+///     override is exposed.
+///
+/// **Still stubbed (deliberately — user-deferred work):** Feedback,
+/// Rate Us, Privacy Policy. Each opens a `StubPage` placeholder.
+///
+/// **Sleep Timer** uses a Button + sheet pattern so the same
+/// `SleepTimerSheet` powers both this row and the moon chip in
+/// Now Playing.
 struct SettingsView: View {
 
     @Environment(SleepTimer.self) private var sleepTimer
@@ -19,9 +27,12 @@ struct SettingsView: View {
                     row("Player Style",       systemImage: "tshirt",       to: PlayerStyleView())
                     row("App Theme",          systemImage: "paintpalette", to: AppThemeView())
                     sleepTimerRow
-                    row("Equalizer",          systemImage: "slider.vertical.3", to: equalizerStub)
+                    row("Equalizer",          systemImage: "slider.vertical.3", to: EqualizerView())
                     row("Playback Setting",   systemImage: "gear",         to: PlaybackSettingsView())
-                    row("Language",           systemImage: "globe",        to: languageStub)
+                }
+
+                Section {
+                    row("About", systemImage: "info.circle", to: AboutView())
                 }
 
                 Section {
@@ -40,27 +51,6 @@ struct SettingsView: View {
                         message: "Lunar is local-first. This page will lay out the full policy.",
                         systemImage: "lock.shield"
                     ))
-                }
-
-                Section {
-                    HStack {
-                        Text("Version")
-                        Spacer()
-                        Text("0.4.0")
-                            .foregroundStyle(ColorTokens.textSecondary)
-                    }
-                    HStack {
-                        Text("Build")
-                        Spacer()
-                        Text("1")
-                            .foregroundStyle(ColorTokens.textSecondary)
-                    }
-                    HStack {
-                        Text("Made with")
-                        Spacer()
-                        Text("\u{1F319} SwiftUI + AVAudioEngine")
-                            .foregroundStyle(ColorTokens.textSecondary)
-                    }
                 }
             }
             .listStyle(.insetGrouped)
@@ -118,23 +108,13 @@ struct SettingsView: View {
     }
 
     // MARK: - Stubbed destination views
-    // Player Style + App Theme + Playback Setting + Equalizer all live
-    // in `Sources/Settings/`. Only Language remains as a placeholder
-    // until translations ship.
-
-    private var equalizerStub: some View {
-        // Kept named the same to avoid touching the row above; the row
-        // now points straight at the real EqualizerView.
-        EqualizerView()
-    }
-
-    private var languageStub: some View {
-        StubPage(
-            title: "Language",
-            message: "English (default) for now. More locales coming in a follow-up.",
-            systemImage: "globe"
-        )
-    }
+    //
+    // Player Style, App Theme, Playback Setting, Equalizer, About —
+    // all real destinations, each living in its own file under
+    // `Sources/Features/Settings/` (or `Sources/Settings/`).
+    //
+    // Feedback, Rate Us, Privacy Policy remain `StubPage` placeholders
+    // by explicit user deferral.
 }
 
 // MARK: - StubPage
