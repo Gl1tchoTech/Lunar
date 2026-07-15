@@ -124,15 +124,13 @@ final class LyricsImporter {
 extension UTType {
     /// Best-effort UTType for an `.lrc` lyrics file.
     ///
-    /// `UTType(filenameExtension: "lrc")` dynamically allocates a
-    /// conformant type on iOS, but its conformance to `public.text` is
-    /// not always picked up cleanly by `fileImporter`. Pair it with
-    /// `plainText` so the picker accepts both `.lrc` and any plain
-    /// `.txt` the user may have renamed to a lyrics export.
+    /// `UTType(filenameExtension: "lrc", conformingTo: .plainText)`
+    /// declares a dynamic `.lrc` type that is a child of `public.text`,
+    /// which is exactly what `fileImporter` needs in iOS 17. We fall
+    /// back to `.plainText` if the dynamic lookup fails (extremely
+    /// rare on iOS). For broader compatibility a future iteration
+    /// should declare an Imported Type Identifier in `Info.plist`.
     static var lrcLyrics: UTType {
-        let lrc = UTType(filenameExtension: "lrc") ?? .plainText
-        // `supersetOf:` gives us a type that includes both lrc + plainText,
-        // which is exactly what the fileImporter needs.
-        return lrc.superset(of: .plainText) ?? .plainText
+        UTType(filenameExtension: "lrc", conformingTo: .plainText) ?? .plainText
     }
 }

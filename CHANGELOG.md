@@ -6,6 +6,31 @@ All notable changes to **Lunar** are documented here. The format follows
 
 ## [Unreleased]
 
+### Step 5 — Tier 2 Part 4: Synced Lyrics (`.lrc` import)
+
+- **`Song.lyricsFileName: String?`** — new SwiftData field on `Song`. Stores the *relative* file name inside `Application Support/Lyrics/`; never an absolute URL (sandbox path may rotate on update/restore). Mirrors `Song.fileName` semantics exactly.
+- **`LyricsParser`** (`Lunar/Sources/Core/Library/LyricsParser.swift`) — NEW pure-Swift `.lrc` parser. Regex-free; walks the line char-by-char collecting `[mm:ss(.xx)]` timestamps and emits one `LyricLine` per timestamp. Tolerates CRLF / CR / LF line endings, strips a leading BOM, and skips metadata lines like `[ti:Title] [ar:Artist] [al:Album] [by:…] [offset:…]`. **Multi-timestamp lines** like `[00:12.50][00:48.20]chorus` produce two `LyricLine` entries sharing the same text. Internally uses `Scanner.scanDouble` for the seconds + fraction in a *single* scan so a value like `00:12.50` produces `12.5` (not `62` — which a `scanInt + scanString(".") + scanDouble` round trip would produce).
+- **`LyricsLibrary`** (`Lunar/Sources/Core/Library/LyricsLibrary.swift`) — NEW file-system façade. Mirrors `MusicLibrary` conventions (`rootDirectory`, `_rootDirectoryOverride` for tests, `ensureLyricsDirectory()`). `LyricsLibraryError` covers `directoryUnavailable` and `fileNotFound`.
+- **`LyricsImporter`** (`Lunar/Sources/Core/Library/LyricsImporter.swift`) — NEW `@MainActor` importer. Pipeline: `startAccessingSecurityScopedResource()` (deferred release) → `ensureLyricsDirectory()` → `Task.detached(priority: .userInitiated)` copy → main-actor parse + persist → `Song.lyricsFileName = "lyrics-<UUID>.lrc"` + `context.save()` → orphan-old-file cleanup. Re-imports delete the previous `.lrc` so we don't leak across rewrites. UTF-8 / UTF-16 / ISO-Latin-1 decoding fallback; surfaces `LyricsLibraryError.fileNotFound` for "undecodable" + "no timestamps" payloads. Adds the `UTType.lrcLyrics` extension that returns `UTType(filenameExtension: "lrc", conformingTo: .plainText)` so `fileImporter` accepts both `.lrc` and any `.txt` a user renamed.
+- **`LyricsView`** (`Lunar/Sources/Features/NowPlaying/LyricsView.swift`) — NEW full-screen sheet. Resolves the playing song through `engine.currentSongID` + `modelContext.model(for:) as? Song` (single source of truth — sheet always renders for the right track even after queue advance). Three render states: **no song**, **no lyrics** (import button), **lyrics loaded** (auto-scrolling column). `LyricsNavigator.activeLine(in: at:)` does an O(log n) binary search of the line whose `time ≤ currentTime`. `ScrollViewReader` proxy animates scrolls when the line index moves by ±1 (natural progression) and snaps for `|Δ| > 1` (seek / crossfade / restart) so the user doesn't fly past the active line. Tap-to-seek calls `engine.send(.seek(line.time))`. After import the player **snaps to the first timestamp** so the user immediately sees the song synced to the very first line.
+- **`LyricsChip`** — NEW chip in Now Playing top chrome (mirrors the existing `SleepTimerChip`). Tapping presents `LyricsView()` as a sheet.
+- **Lyrics `LyricsView` + Import flow** — the user picks `.lrc` from any source app (Files, On My iPhone, AirDrop, etc.) via the system `fileImporter`. After import, the song's lyrics are stored in Application Support and the parsed lines render in the LyricsView on the next `LyricsView` open.
+
+### Step 5 — Tier 2 Part 5: 10-Band Equalizer
+
+- **`EQSettings`** (`Lunar/Sources/Core/Audio/EQSettings.swift`) — NEW `@MainActor @Observable final class`. Holds:
+  - `bands: [Float]` (length `EQController.isoBandCentersHz.count` == **10**, defaults to all zeros; reshaped to flat on length drift).
+  - `isEnabled: Bool` — default true (EQ engaged).
+  - `currentPresetID: PersistentIdentifier?` — nil when the user has nudged the bands off a preset ("Custom" badge in the UI).
+  - `bandBinding(at:)` returns a manual `Binding<Float>` so SwiftUI two-way bindings work for `$bands[i]` (iOS 17 SwiftUI doesn't expand `$store.bands[i]` to a working binding out of the box).
+  - `bands.didSet` clears `currentPresetID` — cheap in-memory write, lets the UI switch the "active preset" chip highlight to "Custom" automatically.
+  - `apply(preset:)` snaps to a stored preset (pads short / trims long arrays defensively, never crashing the AV engine).
+  - `reset()` zeros bands but leaves `isEnabled` in place.
+- **`AudioEngine` runtime EQ mirror** — added `lastAppliedBands` cache (defaults to all zero), `setEQEnabled(_:)` public method (re-applies from cache on enable, calls `EQController.bypass(eq)` on disable), private `applyEQ(bands:)` (clamps gains to ±12 dB and writes to the cached unit). Cache stays populated across bypass cycles so the user's tuning survives a temporary off-on toggle.
+- **`EqualizerView`** (`Lunar/Sources/Settings/EqualizerView.swift`) — NEW Settings destination. Four sections: **Master On/Off** + **Bands** (10 vertical sliders) + **Presets** (horizontal scrolling row of `@Query` chips) + **Reset to Flat**. Vertical sliders are native `Slider`s rotated -90° with `.frame(width: 160, height: 28)` to swap dimensions back. Footer copy explains the centre-line / step granularity. Custom badge appears when the user has tweaked off a preset.
+- **`LunarApp` + `LunarAppCoordinator`** — new `@State eqSettings = EQSettings()` is injected into the SwiftUI environment. `LunarAppCoordinator.task` does the once-only mirror at launch (warm-up `Task { await audioEngine.send(.setEQ(bands: initialBands)) }` + `audioEngine.setEQEnabled(eqSettings.isEnabled)`). `.onChange(of: eqSettings.bands)` + `.onChange(of: eqSettings.isEnabled)` keep the engine in sync live.
+- **`Settings ▸ Equalizer`** row now points at the real `EqualizerView()` (previously the empty stub).
+
 ### Step 5 — Tier 2 Part 3: Playback Settings (crossfade + gapless)
 
 - **`PlaybackSettings`** (`Lunar/Sources/Core/Audio/PlaybackSettings.swift`) — NEW `@MainActor @Observable final class`. Two stored values with `didSet` persistence + `onChange` callback broadcast:

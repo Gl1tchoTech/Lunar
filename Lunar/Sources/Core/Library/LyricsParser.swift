@@ -115,25 +115,27 @@ enum LyricsParser {
     /// seconds. Returns `nil` for malformed input (anything outside
     /// the format) and for anything that doesn't START with digits —
     /// e.g. `[ti:Title]` or `[ar:Artist]`.
+    ///
+    /// **Implementation note:** We `scanDouble` for the seconds field
+    /// *after* the colon rather than splitting off a separate decimal
+    /// scan. Splitting into `scanInt(seconds)` + `scanString(".")` +
+    /// `scanDouble(fraction)` would interpret `"50"` (the fraction
+    /// part of `"00:12.50"`) as `50.0`, not `0.5`. Letting
+    /// `scanDouble` consume both whole and fractional seconds lets the
+    /// scanner's own decimal handling produce the right value.
     private static func parseTimestamp(_ raw: String) -> TimeInterval? {
-        // Strict prefix matching: `\d{1,2}:\d{1,2}(?:.\d{1,3})?`.
+        // Strict prefix matching: `\d{1,2}:\d{1,2}(\.\d{1,3})?`.
         // `[ti:Title]` etc. fail because the first char isn't a digit.
         let scanner = Scanner(string: raw)
-        var minutes: Int = 0
-        var seconds: Int = 0
-        guard scanner.scanInt(&minutes), minutes >= 0 else { return nil }
-        // Next char must be ':'.
+        var minutes: Double = 0
+        guard scanner.scanDouble(&minutes), minutes >= 0 else { return nil }
+        // Next char must be ':' (preserved through the double scan).
         guard scanner.scanString(":") != nil else { return nil }
-        guard scanner.scanInt(&seconds), seconds >= 0, seconds < 60 else { return nil }
-        // Optional `.xx(x)` hundredths/thousandths.
-        var fractions: Double = 0
-        var fractionalValue: Double = 0
-        if scanner.scanString(".") != nil,
-           scanner.scanDouble(&fractionalValue) {
-            fractions = fractionalValue
-        }
-        let total = Double(minutes) * 60 + Double(seconds) + fractions
-        return total
+        // Scan seconds + optional `.xx(x)` as a single double so a
+        // value like `"12.50"` produces `12.5` (not `12 + 50 == 62`).
+        var seconds: Double = 0
+        guard scanner.scanDouble(&seconds), seconds >= 0, seconds < 60 else { return nil }
+        return Double(minutes) * 60 + seconds
     }
 
     /// Quick metadata-line detection: starts with `[` then a non-digit

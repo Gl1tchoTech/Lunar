@@ -180,9 +180,6 @@ final class AudioEngine: AudioPlayerInterface {
         lastAppliedBands = clamped
     }
 
-
-    }
-
     // MARK: - Commands (public)
 
     func play() {

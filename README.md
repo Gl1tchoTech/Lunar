@@ -11,7 +11,8 @@ Lunar is a beautifully crafted music player designed to make listening feel as g
 - **iOS 17+ SwiftUI** — no UIKit, no storyboards, no reactive glue
 - **Local-first** — your music stays on your device (no cloud required)
 - **6 Player Themes** — **Cyber Neon** by default, plus **Vinyl / Lime**, **Aurora**, **Vivid Ocean**, **Sepia Wood**, **Pastel Playful**
-- **Real audio DSP** — 10-band `AVAudioUnitEQ`, engine-driven crossfade, gapless playback
+- **Real audio DSP** — 10-band `AVAudioUnitEQ` with 13 built-in presets + Custom, engine-driven crossfade, gapless playback
+- **Synced lyrics** — manual `.lrc` file import (per-song), active-line auto-scroll, tap-to-seek
 - **SwiftData library** — Songs, Albums, Artists, Playlists, Listen Events
 - **Universal** — iPhone tab bar, iPad split view
 - **SideStore-ready** — unsigned IPA build, sign on-device with your Apple ID
