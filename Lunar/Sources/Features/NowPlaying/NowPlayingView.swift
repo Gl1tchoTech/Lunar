@@ -4,6 +4,7 @@ import SwiftUI
 /// `MiniPlayer` overlay. Hosts a Player-Theme gradient background,
 /// large artwork, scrub bar, and 5-button transport row. Tap on the
 /// dismiss arrow to slide down (calls `dismiss()`).
+@MainActor
 struct NowPlayingView: View {
 
     @Environment(\.dismiss) private var dismiss
@@ -120,6 +121,7 @@ struct NowPlayingView: View {
 /// Pill-shaped button in the Now Playing top chrome. Renders the moon
 /// SF Symbol plus an optional countdown string. Tapping opens the
 /// `SleepTimerSheet`. When the timer is off, only the icon shows.
+@MainActor
 private struct SleepTimerChip: View {
 
     let palette: PlayerThemePalette
@@ -164,6 +166,7 @@ private struct SleepTimerChip: View {
 /// Unlike the sleep chip we don't track per-tap state here — the
 /// sheet itself reads back whether lines exist and shows an empty
 /// state if the current song has no `.lrc` file.
+@MainActor
 private struct LyricsChip: View {
 
     let palette: PlayerThemePalette

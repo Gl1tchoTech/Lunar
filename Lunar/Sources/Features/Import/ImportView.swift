@@ -39,6 +39,7 @@ import UniformTypeIdentifiers
 /// flag flip drives both the `.safeAreaInset` `MiniPlayer` (which
 /// writes `true`) **and** the `.fullScreenCover` that opens
 /// `NowPlayingView`.
+@MainActor
 struct ImportView: View {
 
     @Environment(\.modelContext) private var modelContext
@@ -283,6 +284,7 @@ struct ImportView: View {
 /// Single row in the Import tab's lists. Mirrors `SongRow` shape but
 /// does not depend on `LibraryService.onToggleFavorite` since the
 /// Import tab is read-only for now (favorites are toggled from Library).
+@MainActor
 private struct ImportSongRow: View {
     let song: Song
     let tapHandler: () -> Void

@@ -12,6 +12,7 @@ import SwiftUI
 /// Both values persist to `UserDefaults` and propagate to the live
 /// `AudioEngine` via `PlaybackSettings.onChange` (installed in
 /// `LunarAppCoordinator`).
+@MainActor
 struct PlaybackSettingsView: View {
 
     @Environment(PlaybackSettings.self) private var settings

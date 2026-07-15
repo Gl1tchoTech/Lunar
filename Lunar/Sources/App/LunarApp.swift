@@ -57,7 +57,8 @@ struct LunarApp: App {
         WindowGroup {
             // The coordinator lives between App and RootView so the
             // session→engine + sleepTimer→engine wiring happens in a
-            // SwiftUI body where @Environment already has values.                LunarAppCoordinator(
+            // SwiftUI body where @Environment already has values.
+            LunarAppCoordinator(
                     audioSession: appAudioSession,
                     audioEngine: audioEngine,
                     sleepTimer: sleepTimer,

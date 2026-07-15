@@ -64,8 +64,8 @@ private struct ThemePreviewCard: View {
                             )
                         Spacer()
                         HStack(spacing: Spacing.xs) {
-                            miniIcon(systemName: "backward.fill", palette: palette)
-                            miniIcon(systemName: "forward.fill", palette: palette)
+                            miniIcon(systemImage: "backward.fill", palette: palette)
+                            miniIcon(systemImage: "forward.fill", palette: palette)
                         }
                     }
                     .padding(Spacing.m)

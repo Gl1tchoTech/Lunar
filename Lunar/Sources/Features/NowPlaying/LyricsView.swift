@@ -17,6 +17,7 @@ import UniformTypeIdentifiers
 ///    index moves by ±1 (natural progression) and **snap** when it
 ///    jumps more than one (seek / crossfade / restart).
 /// 3. Manual taps on a line seek `engine.send(.seek(line.time))`.
+@MainActor
 struct LyricsView: View {
 
     @Environment(AudioEngine.self) private var engine
@@ -285,6 +286,7 @@ enum LyricsNavigator {
 
 // MARK: - LyricRow
 
+@MainActor
 private struct LyricRow: View {
     let text: String
     let isActive: Bool

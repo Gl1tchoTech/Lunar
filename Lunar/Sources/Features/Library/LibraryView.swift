@@ -21,6 +21,7 @@ import SwiftData
 ///
 /// The current tab, sort key, and search copy live here so other tabs
 /// don't accidentally read the sort or search bar by accident.
+@MainActor
 struct LibraryView: View {
 
     @Environment(\.modelContext) private var modelContext

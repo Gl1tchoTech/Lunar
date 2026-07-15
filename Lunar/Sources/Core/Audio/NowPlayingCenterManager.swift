@@ -246,7 +246,7 @@ final class NowPlayingCenterManager {
         let bounds = CGSize(width: downscaled.size.width, height: downscaled.size.height)
 
         return MPMediaItemArtwork(boundsSize: bounds) { requestedSize in
-            crop(downscaled, to: requestedSize)
+            self.crop(downscaled, to: requestedSize)
         }
     }
 
