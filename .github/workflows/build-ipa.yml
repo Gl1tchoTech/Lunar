@@ -30,35 +30,90 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Select Xcode 15.4
+        # Canonical action: sets DEVELOPER_DIR, validates the Xcode is
+        # actually installed at /Applications/Xcode_15.4.app, fails loudly
+        # if not, and surfaces the resolved version via steps.xcode.outputs.
+        # Replaces the previous raw bash + `xcode-select` step which
+        # silently no-op'd when the runner image migrated to a newer
+        # default Xcode (causing XcodeGen to emit pbxproj objectVersion =
+        # 77 — opaque to Xcode 15.4).
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.4'
+
+      - name: Verify Xcode + Swift toolchain
+        # Logs the resolved toolchain into the GHA log right after the
+        # selector, so the next regression tells us which Xcode was
+        # actually used instead of having to dig through xcodebuild
+        # stderr.
         run: |
-          if [ -d "/Applications/Xcode_15.4.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
-          fi
+          set -euo pipefail
           xcodebuild -version
           swift --version
 
-      - name: Install XcodeGen
+      - name: Install & pin XcodeGen
+        # HOMEBREW_NO_AUTO_UPDATE=1 freezes the formula version (no
+        # silent upgrade between GH Actions runs). `brew pin xcodegen`
+        # then locks it from any future `brew upgrade` accidental
+        # retry. Together this guarantees the same XcodeGen binary is
+        # used on every run, so our project.yml
+        # `options.xcodeVersion: "14.0"` always maps deterministically
+        # to a known pbxproj objectVersion.
         run: |
+          set -euo pipefail
+          export HOMEBREW_NO_AUTO_UPDATE=1
           if ! command -v xcodegen >/dev/null 2>&1; then
             brew install xcodegen
+          else
+            echo "XcodeGen already present; honouring any existing brew pin."
           fi
+          # `brew pin` succeeds the first time and is a no-op if already
+          # pinned, so this is safe on every run.
+          brew pin xcodegen || true
           xcodegen --version
 
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Verify generated project format
-        # Defensive logging: the project.yml xcodeVersion: "14.0" pin
-        # (see project.yml options.) forces XcodeGen to emit pbxproj
-        # objectVersion = 56 regardless of the host's xcode-select. If
-        # that ever drifts (XcodeGen option renamed, runner image change,
-        # someone removes the pin), the actual objectVersion +
-        # compatibilityVersion values print into the GHA log BEFORE
-        # xcodebuild fails with an opaque "future Xcode project file
-        # format (N)" error. Exits 0 even when grep matches (it always
-        # does here) — this step exists purely for log clarity.
+      - name: Verify generated project format (fail-fast)
+        # Reads Lunar.xcodeproj/project.pbxproj, prints the actual
+        # objectVersion + compatibilityVersion, and EXITS NON-ZERO
+        # when either drifts away from what project.yml's
+        # `options.xcodeVersion: "14.0"` promised.
+        #
+        # Replaces the previous passive `grep` (which only logged the
+        # value). Regressions now print: "::error:: objectVersion
+        # mismatch: expected 56, got 77" instead of the opaque xcodebuild
+        # "future Xcode project file format (N)" crash.
         run: |
-          grep -nE 'objectVersion|compatibilityVersion' Lunar.xcodeproj/project.pbxproj
+          set -euo pipefail
+          PBX=Lunar.xcodeproj/project.pbxproj
+          if [ ! -f "$PBX" ]; then
+            echo "::error::Generated $PBX not found."
+            exit 1
+          fi
+          echo "--- pbxproj format diagnostics ---"
+          grep -nE 'objectVersion|compatibilityVersion' "$PBX" || true
+          OBJ=$(grep -oE 'objectVersion\s*=\s*[0-9]+' "$PBX" | head -1 | grep -oE '[0-9]+' || true)
+          COMPAT=$(grep -oE 'compatibilityVersion\s*=\s*"[^"]+"' "$PBX" | head -1 || true)
+          echo "  objectVersion          = ${OBJ:-MISSING}"
+          echo "  compatibilityVersion   = ${COMPAT:-MISSING}"
+          EXPECTED_OBJ=56
+          EXPECTED_COMPAT='"Xcode 14.0"'
+          FAIL=0
+          if [ "${OBJ:-}" != "$EXPECTED_OBJ" ]; then
+            echo "::error::objectVersion mismatch: expected ${EXPECTED_OBJ}, got ${OBJ:-MISSING}"
+            FAIL=1
+          fi
+          if [ "${COMPAT:-}" != "$EXPECTED_COMPAT" ]; then
+            echo "::error::compatibilityVersion mismatch: expected ${EXPECTED_COMPAT}, got ${COMPAT:-MISSING}"
+            FAIL=1
+          fi
+          if [ "$FAIL" -ne 0 ]; then
+            echo "::error::pbxproj format drift. Verify (1) project.yml still has options.xcodeVersion: \"14.0\", (2) the installed XcodeGen honours the xcodeVersion option, (3) the selected Xcode supports SwiftData + iOS 17 targets."
+            exit 1
+          fi
+          echo "  -> OK (matches XcodeGen xcodeVersion: \"14.0\")"
 
       - name: Run unit + snapshot tests (Debug on iPhone 15 simulator)
         # We deliberately do NOT pipe to xcpretty here: a non-zero exit from
