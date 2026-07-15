@@ -75,16 +75,59 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Verify generated project format (fail-fast)
-        # Reads Lunar.xcodeproj/project.pbxproj, prints the actual
-        # objectVersion + compatibilityVersion, and EXITS NON-ZERO
-        # when either drifts away from what project.yml's
-        # `options.xcodeVersion: "14.0"` promised.
+      - name: Patch pbxproj for Xcode 15.4 backwards compatibility
+        # Why this exists (the upstream truth, learned the hard way):
         #
-        # Replaces the previous passive `grep` (which only logged the
-        # value). Regressions now print: "::error:: objectVersion
-        # mismatch: expected 56, got 77" instead of the opaque xcodebuild
-        # "future Xcode project file format (N)" crash.
+        # XcodeGen's `options.xcodeVersion` key does NOT control the
+        # pbxproj `objectVersion` line — it only sets
+        # `LastUpgradeCheck`. The actual `objectVersion` is emitted by
+        # the underlying XcodeProj library, which since XcodeGen 2.42+
+        # defaults to the host Xcode's current format (`objectVersion =
+        # 77` on Xcode 16, with NO `compatibilityVersion` line at
+        # all). Xcode 15.4 (the SideStore workflow minimum per
+        # docs/BUILD.md) refuses to open that with:
+        #   "The project 'Lunar' cannot be opened because it is in a
+        #    future Xcode project file format (77)."
+        #
+        # The XcodeGen maintainers' acknowledged workaround, cited in
+        # yonaskolb/XcodeGen#1578 + CocoaPods/CocoaPods#12583 and
+        # recommended directly in CocoaPods, is to overwrite the
+        # format header lines AFTER `xcodegen generate` runs. The
+        # patch is idempotent: `objectVersion` and
+        # `compatibilityVersion` each appear exactly once in a pbxproj
+        # archive, and the patch harmlessly no-ops on every other byte.
+        run: |
+          set -euo pipefail
+          PBX=Lunar.xcodeproj/project.pbxproj
+          if [ ! -f "$PBX" ]; then
+            echo "::error::$PBX not found for patching."
+            exit 1
+          fi
+          perl -pi -e 's/objectVersion\s*=\s*\d+;/objectVersion = 56;/' "$PBX"
+          if grep -q 'compatibilityVersion' "$PBX"; then
+            perl -pi -e 's/compatibilityVersion\s*=\s*"[^"]+";/compatibilityVersion = "Xcode 14.0";/' "$PBX"
+          else
+            # Insert a new compatibilityVersion line directly under
+            # objectVersion, with the same leading-tab indent.
+            perl -pi -e 's/(objectVersion = 56;)/$1\n\tcompatibilityVersion = "Xcode 14.0";/' "$PBX"
+          fi
+          echo "--- post-patch pbxproj format header ---"
+          grep -nE 'objectVersion|compatibilityVersion' "$PBX" || true
+
+      - name: Verify generated project format (fail-fast)
+        # Reads the (post-patched) Lunar.xcodeproj/project.pbxproj,
+        # prints the actual objectVersion + compatibilityVersion, and
+        # EXITS NON-ZERO if either drifts away from the third-party
+        # compatibility floor (Xcode 14.0 / objectVersion 56).
+        #
+        # If this fails, the answer is almost always one of:
+        #   1. The perl patch above regressed — re-read it.
+        #   2. XcodeGen / XcodeProj started emitting `objectVersion`
+        #      in a new pattern (e.g. with whitespace) the perl
+        #      regex doesn't match — extend the regex.
+        #   3. The selected Xcode itself can no longer downgrade to
+        #      56 — switch the runner image or update to a newer
+        #      SideStore-supported minimum.
         run: |
           set -euo pipefail
           PBX=Lunar.xcodeproj/project.pbxproj
@@ -110,10 +153,10 @@ jobs:
             FAIL=1
           fi
           if [ "$FAIL" -ne 0 ]; then
-            echo "::error::pbxproj format drift. Verify (1) project.yml still has options.xcodeVersion: \"14.0\", (2) the installed XcodeGen honours the xcodeVersion option, (3) the selected Xcode supports SwiftData + iOS 17 targets."
+            echo "::error::pbxproj format drift. Verify (1) the \"Patch pbxproj for Xcode 15.4 backwards compatibility\" step ran, (2) the perl regex still matches the XcodeProj library's current output, (3) the selected Xcode supports SwiftData + iOS 17 targets."
             exit 1
           fi
-          echo "  -> OK (matches XcodeGen xcodeVersion: \"14.0\")"
+          echo "  -> OK (matches third-party Xcode 14.0 compatibility floor)"
 
       - name: Run unit + snapshot tests (Debug on iPhone 15 simulator)
         # We deliberately do NOT pipe to xcpretty here: a non-zero exit from

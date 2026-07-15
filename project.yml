@@ -1,23 +1,21 @@
 name: Lunar
 options:
-  # Pin the generated .xcodeproj to a format every supported Xcode can read,
-  # regardless of the active `xcode-select` / brew'd xcodegen on the host.
+  # We intentionally do NOT set `xcodeVersion` here, because it does
+  # NOT control the pbxproj `objectVersion` in XcodeGen ≥ 2.42 — it
+  # only sets `LastUpgradeCheck` in the archive object. The actual
+  # `objectVersion` is emitted by the underlying XcodeProj library,
+  # which defaults to the host Xcode's current format (77 on Xcode 16,
+  # omitting `compatibilityVersion` entirely).
   #
-  # `xcodeVersion` IS XcodeGen's single supported mechanism for the
-  # pbxproj objectVersion + compatibilityVersion. Passing "14.0" forces
-  # XcodeGen to emit `objectVersion = 56` and `compatibilityVersion =
-  # "Xcode 14.0"` in `Lunar.xcodeproj/project.pbxproj`, which every
-  # Xcode 14.x, 15.x, or 16.x that supports SwiftData + iOS 17 targets
-  # can open.
+  # The deterministic, runner-agnostic workaround lives in
+  # `.github/workflows/build-ipa.yml` step "Patch pbxproj for Xcode
+  # 15.4 backwards compatibility", which overwrites the
+  # `objectVersion` + `compatibilityVersion` header lines AFTER
+  # `xcodegen generate` runs. See yonaskolb/XcodeGen#1578 and
+  # CocoaPods/CocoaPods#12583 for the maintainer-recommended approach.
   #
-  # Note: hand-rolled `options.objectVersion` / `options.compatibilityVersion`
-  # keys are silently DROPPED by XcodeGen — they are not in its schema.
-  # Without this `xcodeVersion` pin, a host whose `xcode-select` points to
-  # Xcode 16 (e.g. the current `macos-14` runner default) emits
-  # `objectVersion = 77`, which Xcode 15.4 (the SideStore workflow
-  # minimum per docs/BUILD.md) refuses with "future Xcode project file
-  # format (77)".
-  xcodeVersion: "14.0"
+  # `xcodeVersion` is intentionally left unset so future maintainers
+  # do not fall into the same trap I did at 3448447 / 0c13b2f.
   bundleIdPrefix: com.gl1tchotech
   deploymentTarget:
     iOS: "17.0"
