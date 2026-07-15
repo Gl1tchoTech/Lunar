@@ -112,9 +112,28 @@ enum AudioMetadataExtractor {
         let albumTitle = rawAlbum?.trimmedNonEmpty
 
         // MARK: track number — uses .numberValue (NSNumber-aware)
+        //
+        // Track number is NOT in AVFoundation's CommonMetadata
+        // spec (Common covers Title / Artist / Album / Artwork
+        // / CreationDate / etc., but Track Number is
+        // format-specific). The prior implementation reached for
+        // a synthetic Common-metadata key that the iOS 17 SDK
+        // rejects outright (see the recent compile_fix_2 commit
+        // message for the historical bug). We fall back to the
+        // format-specific keys that ship most metadata:
+        //   1. iTunes namespace (M4A/MP4 + ID3v2.4 MP3)
+        //   2. ID3 namespace    (older ID3v2.3 MP3)
+        // These are matched on `identifier` (raw string), not
+        // `commonKey` (the standardized CommonMetadata mapping),
+        // because `findItem(_:key:)` only works for Common keys.
         let trackNumber: Int? = {
-            let item = findItem(commonMeta, key: .commonKeyTrackNumber)
-                ?? findItem(metadata,   key: .commonKeyTrackNumber)
+            let item = findItemByIdentifier(
+                metadata,
+                identifier: AVMetadataKey.iTunesMetadataKeyTrackNumber
+            ) ?? findItemByIdentifier(
+                metadata,
+                identifier: AVMetadataKey.id3MetadataKeyTrackNumber
+            )
             guard let item else { return nil }
             if let asInt = item.numberValue?.intValue { return asInt }
             if let asStr = item.stringValue {
@@ -178,6 +197,17 @@ enum AudioMetadataExtractor {
         key: AVMetadataKey
     ) -> AVMetadataItem? {
         items.first { $0.commonKey == key }
+    }
+
+    /// Format-specific lookup. Use when the metadata key is NOT in
+    /// the CommonMetadata spec (e.g. track number) — `commonKey`
+    /// returns `nil` for those items, so the cross namespace match
+    /// happens via the raw `identifier` string instead.
+    private static func findItemByIdentifier(
+        _ items: [AVMetadataItem],
+        identifier: AVMetadataKey
+    ) -> AVMetadataItem? {
+        items.first { $0.identifier == identifier.rawValue }
     }
 
     /// Read the first string metadata tag. Uses `AVMetadataItem.stringValue`

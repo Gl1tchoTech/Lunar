@@ -32,16 +32,18 @@ final class EQSettings {
     /// bounded by `EQController.isoBandCentersHz.count` and clamped
     /// to ±12 dB before being sent to the engine.
     ///
-    /// `nonisolated` because the value is `[Float]` (Sendable) —
-    /// Safe under Swift 6 strict concurrency to read/write from any
-    /// context. The @Observable macro's ObservationRegistrar handles
-    /// cross-actor synchronization for us, and marking the property
-    /// nonisolated lets SwiftUI views + Binding closures access it
-    /// without an explicit `@MainActor` qualifier. (See the
-    /// `MainActor isolation` diagnostic at `EqualizerView.swift:89, 95`
-    /// — the property declaration is the root-cause fix site, not the
-    /// view's access site.)
-    nonisolated var bands: [Float] {
+    /// MainActor-isolated by default (enclosing class is
+    /// `@MainActor @Observable`). The `@Observable` macro's
+    /// ObservationRegistrar hands out MainActor-isolated accessors
+    /// for stored properties under strict concurrency, and the
+    /// Swift compiler explicitly disallows `nonisolated` on
+    /// stored properties of @Observable types — the regression
+    /// that broke `21774b5`. So the diagnostic fix had to live at
+    /// the access site instead: `EqualizerView.isEnabledFooter`
+    /// and `EqualizerView.isAllFlat` carry explicit `@MainActor`
+    /// annotations that satisfy the compiler and keep SwiftUI
+    /// view-context reads of `bands` clean.
+    var bands: [Float] {
         didSet {
             // Keep the array length sane if a future migration ever
             // trims it; never let the engine see fewer than 10 bands.
@@ -56,16 +58,19 @@ final class EQSettings {
     }
 
     /// When false, the EQ is bypassed (audio passes through). The
-    /// default is `true` (bands are engaged). `nonisolated` because
-    /// `Bool` is `Sendable` and the @Observable registrar handles
-    /// cross-actor sync — see the doc comment on `bands` above.
-    nonisolated var isEnabled: Bool = true
+    /// default is `true` (bands are engaged). MainActor-isolated
+    /// by virtue of the enclosing `@MainActor @Observable` class —
+    /// `nonisolated` is disallowed on stored properties of
+    /// @Observable types under strict concurrency. See `bands`
+    /// for the full rationale.
+    var isEnabled: Bool = true
 
     /// Currently applied preset. `nil` = no preset / "Custom".
-    /// `PersistentIdentifier` is `Sendable` so passing it across
-    /// actors stays safe. `nonisolated` for the same reason as
-    /// `bands` / `isEnabled` above.
-    nonisolated var currentPresetID: PersistentIdentifier?
+    /// `PersistentIdentifier` is `Sendable` so the value itself is
+    /// safe to pass across actors, but the property stays
+    /// MainActor-isolated because the enclosing class is. See
+    /// `bands` for the full rationale.
+    var currentPresetID: PersistentIdentifier?
 
     init() {
         self.bands = Array(repeating: 0, count: EQController.isoBandCentersHz.count)
@@ -81,12 +86,13 @@ final class EQSettings {
     ///
     /// Captures `self.bands` explicitly inside the closures —
     /// required by Swift 6 strict-concurrency rules because
-    /// `Binding<Float>`'s `get`/`set` are @Sendable, so any
-    /// MainActor-isolated property access must cross actors via
-    /// `self.` (the property's macro-generated accessor is the only
-    /// allowed escape hatch). Even with the property marked
-    /// `nonisolated` above, the explicit `self.` keeps the
-    /// diagnostic away under `SWIFT_STRICT_CONCURRENCY: minimal`.
+    /// `Binding<Float>`'s `get`/`set` cross context boundaries,
+    /// so the macro-expanded MainActor-isolated accessor for
+    /// `bands` must be reached via `self.` (the only allowed
+    /// escape hatch). Reads of `self.bands` from these closures
+    /// still run on MainActor (no actor hop) but the explicit
+    /// `self.` is what silences the diagnostic under
+    /// `SWIFT_STRICT_CONCURRENCY: minimal`.
     func bandBinding(at index: Int) -> Binding<Float> {
         Binding(
             get: {
