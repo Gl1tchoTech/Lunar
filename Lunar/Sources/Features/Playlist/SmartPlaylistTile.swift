@@ -9,27 +9,36 @@ import SwiftUI
 struct SmartPlaylistTile: View {
 
     enum Kind: Hashable {
+        case favorites
         case mostPlayed
         case recentlyPlayed
 
         var title: String {
             switch self {
-            case .mostPlayed:     "Most Played"
-            case .recentlyPlayed: "Recently Played"
+            case .favorites:       "My Favorites"
+            case .mostPlayed:      "Most Played"
+            case .recentlyPlayed:  "Recently Played"
             }
         }
 
         var systemImage: String {
             switch self {
-            case .mostPlayed:     "music.note"
-            case .recentlyPlayed: "clock"
+            case .favorites:       "heart.fill"
+            case .mostPlayed:      "music.note"
+            case .recentlyPlayed:  "clock"
             }
         }
 
+        /// Each tile uses a distinct pair so the user can read the
+        /// smart-playlist context at a glance: warm-pink for Favorites
+        /// (matches the heart hero used by `PlaylistDetailView` when
+        /// it sees a playlist named "My Favorites"), then cool→warm
+        /// gradients for Most Played / Recently Played.
         var gradient: [Color] {
             switch self {
-            case .mostPlayed:     [.blue, .teal]
-            case .recentlyPlayed: [.teal, .green]
+            case .favorites:       [.red, .pink]
+            case .mostPlayed:      [.blue, .teal]
+            case .recentlyPlayed:  [.teal, .green]
             }
         }
     }

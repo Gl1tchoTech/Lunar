@@ -29,6 +29,11 @@ struct LunarApp: App {
     /// User equalizer preferences (10 bands + on/off + active preset).
     @State private var eqSettings = EQSettings()
 
+    /// User queue preferences (shuffle + repeat).
+    /// Mirrors the `PlaybackSettings` template so `LunarAppCoordinator`
+    /// can wire `onChange` mutations into the live `AudioEngine`.
+    @State private var queueSettings = QueueSettings()
+
     /// App Theme settings (System / Light / Dark + accent color).
     @State private var appThemeSettings = AppThemeSettings()
 
@@ -45,21 +50,22 @@ struct LunarApp: App {
         WindowGroup {
             // The coordinator lives between App and RootView so the
             // session→engine + sleepTimer→engine wiring happens in a
-            // SwiftUI body where @Environment already has values.
-            LunarAppCoordinator(
-                audioSession: appAudioSession,
-                audioEngine: audioEngine,
-                sleepTimer: sleepTimer,
-                playbackSettings: playbackSettings,
-                eqSettings: eqSettings,
-                modelContainer: container
-            )
-            .environment(theme)
-            .environment(audioEngine)
-            .environment(sleepTimer)
-            .environment(playbackSettings)
-            .environment(eqSettings)
-            .environment(appThemeSettings)
+            // SwiftUI body where @Environment already has values.                LunarAppCoordinator(
+                    audioSession: appAudioSession,
+                    audioEngine: audioEngine,
+                    sleepTimer: sleepTimer,
+                    playbackSettings: playbackSettings,
+                    eqSettings: eqSettings,
+                    queueSettings: queueSettings,
+                    modelContainer: container
+                )
+                .environment(theme)
+                .environment(audioEngine)
+                .environment(sleepTimer)
+                .environment(playbackSettings)
+                .environment(eqSettings)
+                .environment(queueSettings)
+                .environment(appThemeSettings)
             .preferredColorScheme(appThemeSettings.mode.colorScheme)
             .tint(appThemeSettings.accent.color)
         }
@@ -93,6 +99,7 @@ private struct LunarAppCoordinator: View {
     let sleepTimer: SleepTimer
     let playbackSettings: PlaybackSettings
     let eqSettings: EQSettings
+    let queueSettings: QueueSettings
     /// SwiftData container — used by the NowPlayingCenterManager wiring
     /// to resolve a song's artwork bytes on the main context. Kept as
     /// `let` because views recreate the struct on every draw; lifecycle
@@ -141,6 +148,20 @@ private struct LunarAppCoordinator: View {
                         playbackSettings.crossfadeDurationSeconds
                     audioEngine.gaplessEnabled =
                         playbackSettings.gaplessEnabled
+                }
+
+                // Tier 5 — mirror QueueSettings values into the live
+                // AudioEngine. Same one-way pattern as PlaybackSettings
+                // above: QueueSettings is the UserDefaults-backed source
+                // of truth (TransportRow taps it directly); the engine
+                // just reads the most-recent value via its
+                // `shuffleMode` + `repeatMode` mirrors.
+                audioEngine.shuffleMode = queueSettings.shuffleMode
+                audioEngine.repeatMode  = queueSettings.repeatMode
+                queueSettings.onChange = { [weak audioEngine] in
+                    guard let audioEngine else { return }
+                    audioEngine.shuffleMode = queueSettings.shuffleMode
+                    audioEngine.repeatMode  = queueSettings.repeatMode
                 }
 
                 // Warm-up push of EQ state — bands are CLAMPED at

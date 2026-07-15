@@ -2,7 +2,8 @@ import SwiftUI
 import SwiftData
 
 /// Playlist tab. Layout mirrors reference:
-/// 1. Two smart-playlist tiles (Most Played / Recently Played)
+/// 1. Three smart-playlist tiles in a horizontally-scrolling row
+///    (`My Favorites` · `Most Played` · `Recently Played`)
 /// 2. `↑↓ My Local Playlist (N)` section header
 /// 3. Big lime "+" Create New row
 /// 4. List of user playlists
@@ -28,6 +29,9 @@ struct PlaylistView: View {
     // render and stutter the UI).
     @State private var mostPlayed: [Song] = []
     @State private var recentlyPlayed: [Song] = []
+    /// Tier 5 — `My Favorites` smart-playlist state. Source is
+    /// `LibraryService.favoriteSongs()` (predicate on `Song.isFavorite`).
+    @State private var favorites: [Song] = []
 
     @Query(sort: [SortDescriptor(\Playlist.dateCreated, order: .forward)])
     private var playlists: [Playlist]
@@ -77,7 +81,7 @@ struct PlaylistView: View {
                     PlaylistDetailView(
                         title: route.kind.title,
                         subtitle: subtitle(forSongs: route.songs),
-                        heroStyle: .gradient(colors: route.kind.gradient),
+                        heroStyle: route.kind.favoritesRouteStyle,
                         songs: route.songs
                     )
                 }
@@ -110,6 +114,7 @@ struct PlaylistView: View {
                 // re-running a SwiftData fetch every time `body` runs.
                 mostPlayed = libraryService?.mostPlayedSongs() ?? []
                 recentlyPlayed = libraryService?.recentlyPlayedSongs() ?? []
+                favorites = libraryService?.favoriteSongs() ?? []
             }
         }
     }
@@ -121,24 +126,44 @@ struct PlaylistView: View {
 
     // MARK: - Smart tiles
 
+    /// Tier 5 — three smart tiles now (`My Favorites` joined the
+    /// existing pair). Wrapped in a horizontal scroll so the layout
+    /// doesn't get cramped on smaller iPhone widths (three ≥ 140 pt
+    /// tiles with 16 pt gaps is ≈ 452 pt — wider than an iPhone 15
+    /// portrait). Each tile is `.frame(width: 170)` so the row stays
+    /// predictable regardless of `maxWidth: .infinity` on the tile.
     private var smartTilesRow: some View {
-        HStack(spacing: Spacing.m) {
-            SmartPlaylistTile(
-                kind: .mostPlayed,
-                songCount: mostPlayed.count,
-                totalDuration: mostPlayed.reduce(0.0) { $0 + $1.duration },
-                action: {
-                    navPath.append(.smart(.mostPlayed(mostPlayed)))
-                }
-            )
-            SmartPlaylistTile(
-                kind: .recentlyPlayed,
-                songCount: recentlyPlayed.count,
-                totalDuration: recentlyPlayed.reduce(0.0) { $0 + $1.duration },
-                action: {
-                    navPath.append(.smart(.recentlyPlayed(recentlyPlayed)))
-                }
-            )
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Spacing.m) {
+                SmartPlaylistTile(
+                    kind: .favorites,
+                    songCount: favorites.count,
+                    totalDuration: favorites.reduce(0.0) { $0 + $1.duration },
+                    action: {
+                        navPath.append(.smart(.favorites(favorites)))
+                    }
+                )
+                .frame(width: 170)
+                SmartPlaylistTile(
+                    kind: .mostPlayed,
+                    songCount: mostPlayed.count,
+                    totalDuration: mostPlayed.reduce(0.0) { $0 + $1.duration },
+                    action: {
+                        navPath.append(.smart(.mostPlayed(mostPlayed)))
+                    }
+                )
+                .frame(width: 170)
+                SmartPlaylistTile(
+                    kind: .recentlyPlayed,
+                    songCount: recentlyPlayed.count,
+                    totalDuration: recentlyPlayed.reduce(0.0) { $0 + $1.duration },
+                    action: {
+                        navPath.append(.smart(.recentlyPlayed(recentlyPlayed)))
+                    }
+                )
+                .frame(width: 170)
+            }
+            .padding(.horizontal, 2)
         }
     }
 
@@ -187,7 +212,8 @@ struct PlaylistView: View {
         let h = total / 3600
         let m = total / 60
         let s = total % 60
-        if h > 0 { return "\(h):\(String(format: "%02d", m)):\(String(format: "%02d", s))" }
+        if h > 0 { return "\(h):\(String(format: "%02d", m)):\(String(format: "%02d", s))"
+" }
         return "\(m):\(String(format: "%02d", s))"
     }
 }
@@ -200,13 +226,27 @@ struct SmartPlaylistRoute: Hashable {
     let songs: [Song]
 }
 
+/// Maps a `SmartPlaylistTile.Kind` to a `PlaylistDetailView.HeroStyle`.
+///
+/// `My Favorites` uses the heart hero (matches `PlaylistDetailView`'s
+/// existing `.heart` enum case + `regular`-route branch logic);
+/// `Most Played` and `Recently Played` use their respective gradients.
 extension SmartPlaylistTile.Kind {
+    var favoritesRouteStyle: PlaylistDetailView.HeroStyle {
+        switch self {
+        case .favorites:       .heart
+        case .mostPlayed:      .gradient(colors: Self.mostPlayed.gradient)
+        case .recentlyPlayed:  .gradient(colors: Self.recentlyPlayed.gradient)
+        }
+    }
+
     var navHashable: SmartPlaylistRoute {
         // synthesize with empty songs first; the tile callback carries
         // the songs along — see `pushSmartPlaylist(_:)`.
         SmartPlaylistRoute(kind: self, songs: [])
     }
-    static func mostPlayed(_ songs: [Song]) -> SmartPlaylistRoute { .init(kind: .mostPlayed, songs: songs) }
+    static func favorites(_ songs: [Song])      -> SmartPlaylistRoute { .init(kind: .favorites, songs: songs) }
+    static func mostPlayed(_ songs: [Song])     -> SmartPlaylistRoute { .init(kind: .mostPlayed, songs: songs) }
     static func recentlyPlayed(_ songs: [Song]) -> SmartPlaylistRoute { .init(kind: .recentlyPlayed, songs: songs) }
 }
 

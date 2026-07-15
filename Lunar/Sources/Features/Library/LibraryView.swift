@@ -3,23 +3,59 @@ import SwiftData
 
 /// Library tab — Songs / Artists / Albums / Source.
 ///
-/// Step 3 wires the **Songs** tab fully (sort menu, action row, song
+/// Step 3 wired the **Songs** tab fully (sort menu, action row, song
 /// rows, context menu, empty state). The other three tabs render as
 /// minimal placeholders until their dedicated steps (see plan).
+///
+/// **Tier 5** upgrades the Songs tab:
+///
+/// - **Search** — `.searchable` with a 250 ms debounce via
+///   `.task(id: searchText)`. The actual filter lives in
+///   `SongsListView` (which owns its bound `@Query`) so a sort change
+///   re-binds cleanly without fighting iOS 17 SwiftData's
+///   "can't reassign `_songs`" trap.
+/// - **Song Info** — long-press (`contextMenu`) or single-tap on a row
+///   sets `songInfoTarget`; `.sheet(item:)` presents `SongInfoSheet`.
+///   Using `.sheet(item: $target)` instead of `isPresented` + parallel
+///   song id avoids the typical two-state desync.
+///
+/// The current tab, sort key, and search copy live here so other tabs
+/// don't accidentally read the sort or search bar by accident.
 struct LibraryView: View {
 
-@Environment(\.modelContext) private var modelContext
-@Environment(AudioEngine.self) private var audioEngine
+    @Environment(\.modelContext) private var modelContext
+    @Environment(AudioEngine.self) private var audioEngine
 
-@State private var libraryService: LibraryService?
-@State private var sortKey: LibrarySortKey = .artistName
-@State private var direction: SortDirection = .ascending
-@State private var showingSortMenu = false
-@State private var selectedTab: LibraryListTab = .songs
-@State private var presentingNowPlaying = false
+    @State private var libraryService: LibraryService?
+    @State private var sortKey: LibrarySortKey = .artistName
+    @State private var direction: SortDirection = .ascending
+    @State private var showingSortMenu = false
+    @State private var selectedTab: LibraryListTab = .songs
+    @State private var presentingNowPlaying = false
 
-    // Songs query — sort key + direction drive the SortDescriptor.
-    @Query private var songs: [Song]
+    // Tier 5 — search bar (debounced) + Song Info sheet hosting.
+
+    /// Live search text. Drives `.searchable` directly so the search
+    /// bar feels instant; `debouncedSearchText` follows it 250 ms
+    /// later so we don't churn the @Query on every keystroke.
+    @State private var searchText: String = ""
+
+    /// Debounced (Tier 5 — 250 ms via `.task(id:)`) copy. The
+    /// `SongsListView` filters against this, not `searchText`.
+    @State private var debouncedSearchText: String = ""
+
+    /// `Song` is `Identifiable` via SwiftData's `@Model` →
+    /// `PersistentModel` conformance. A single `@State` here is enough
+    /// — `.sheet(item: $songInfoTarget)` presents when non-nil + the
+    /// sheet's `dismiss()` clears it. **(Replaces the old `.isPresented
+    /// + selectedSong` double state that used to drift.)**
+    @State private var songInfoTarget: Song?
+
+    /// Parallel @Query used purely for counts (SortMenu shows
+    /// "N songs"). Render order lives in `SongsListView` so the
+    /// sort-bound SortDescriptor can rebind its inner @Query without
+    /// mutating this one.
+    @Query private var allSongs: [Song]
 
     enum LibraryListTab: String, CaseIterable, Identifiable {
         case songs, artists, albums, source
@@ -34,17 +70,6 @@ struct LibraryView: View {
         }
     }
 
-    init() {
-        // Initial fetch with the default sort (Artist name ▲). Setting
-        // a fresh `FetchDescriptor` on `@Query` is read-only here; the
-        // runtime swap happens via `updateQuery()` when the user picks
-        // a different sort.
-        _songs = Query(
-            filter: nil,
-            sort: [Song.defaultSort(for: .artistName, direction: .ascending)]
-        )
-    }
-
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -55,6 +80,20 @@ struct LibraryView: View {
             }
             .background(ColorTokens.canvas)
             .navigationTitle("Library")
+            .searchable(
+                text: $searchText,
+                placement: .navigationBarDrawer(displayMode: .automatic),
+                prompt: "Songs or artists"
+            )
+            .task(id: searchText) {
+                // 250 ms debounce. `.task(id:)` cancels the prior task
+                // on every change so the next keystroke simply starts a
+                // new timer — no Combine plumbing required, and no
+                // manual cancel logic.
+                try? await Task.sleep(for: .milliseconds(250))
+                if Task.isCancelled { return }
+                debouncedSearchText = searchText
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: Spacing.m) {
@@ -72,8 +111,12 @@ struct LibraryView: View {
                 SortMenu(
                     sortKey: $sortKey,
                     direction: $direction,
-                    totalSongs: songs.count
+                    totalSongs: allSongs.count
                 )
+            }
+            .sheet(item: $songInfoTarget) { song in
+                SongInfoSheet(song: song)
+                    .modelContainer(modelContext.container)
             }
             .fullScreenCover(isPresented: $presentingNowPlaying) {
                 NowPlayingView()
@@ -137,127 +180,26 @@ struct LibraryView: View {
         }
     }
 
+    /// Songs tab body is now a `SongsListView` — owns the sort-bound
+    /// `@Query` and the filter. LibraryView just supplies the sort
+    /// descriptor + the live debounced search text + action closures.
     private var songsTab: some View {
-        Group {
-            if songs.isEmpty {
-                EmptyState(
-                    title: "No music yet",
-                    message: "Import songs from your device to start building your library.",
-                    icon: {
-                        Image(systemName: "music.note.list")
-                            .font(.system(size: 60, weight: .light))
-                    }
-                )
-            } else {
-                songsList
-            }
-        }
-    }
-
-    private var songsList: some View {
-        List {
-            Section {
-                sortChip
-                    .listRowBackground(ColorTokens.canvas)
-                LibraryActionRow(
-                    totalSongs: songs.count,
-                    onShuffle: shuffleAll,
-                    onPlayAll: playAll
-                )
-                .listRowBackground(ColorTokens.canvas)
-            }
-            Section {
-                ForEach(songs) { song in
-                    SongRow(
-                        song: song,
-                        onToggleFavorite: { toggleFavorite(song) }
-                    )
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            libraryService?.delete(song)
-                        } label: { Label("Delete", systemImage: "trash") }
-                        Button {
-                            libraryService?.toggleFavorite(song)
-                        } label: {
-                            Label(
-                                song.isFavorite ? "Unfavorite" : "Favorite",
-                                systemImage: song.isFavorite ? "heart.slash" : "heart"
-                            )
-                        }
-                        .tint(ColorTokens.appAccent)
-                    }
-                    .contextMenu {
-                        contextMenuContent(for: song)
-                    }
-                    .listRowBackground(ColorTokens.canvas)
-                }
-            }
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(ColorTokens.canvas)
-        .onChange(of: sortKey) { _, _ in updateQuery() }
-        .onChange(of: direction) { _, _ in updateQuery() }
-    }
-
-    private var sortChip: some View {
-        Button {
-            showingSortMenu = true
-        } label: {
-            HStack(spacing: Spacing.xs) {
-                Image(systemName: "arrow.up.arrow.down")
-                Text(sortKey.label)
-                Text("(\(songs.count))")
-                    .foregroundStyle(ColorTokens.textTertiary)
-            }
-            .font(Typography.subheadline)
-            .foregroundStyle(ColorTokens.textPrimary)
-            .padding(.vertical, Spacing.s)
-        }
-        .buttonStyle(.plain)
-    }
-
-    @ViewBuilder
-    private func contextMenuContent(for song: Song) -> some View {
-        Button {
-            toggleFavorite(song)
-        } label: {
-            Label(
-                song.isFavorite ? "Unfavorite" : "Favorite",
-                systemImage: song.isFavorite ? "heart.slash" : "heart"
-            )
-        }
-        Menu {
-            if let service = libraryService {
-                let playlists = (try? modelContext.fetch(FetchDescriptor<Playlist>())) ?? []
-                ForEach(playlists) { playlist in
-                    Button(playlist.title) {
-                        service.add(song, to: playlist)
-                    }
-                }
-                if playlists.isEmpty {
-                    Text("No playlists yet").foregroundStyle(.secondary)
-                }
-            }
-        } label: {
-            Label("Add to Playlist", systemImage: "text.badge.plus")
-        }
-        Button {
-            // Step 5: open the Song Info sheet.
-        } label: {
-            Label("Song Info", systemImage: "info.circle")
-        }
-        Button {
-            // Step 5: open the share sheet for song URL.
-        } label: {
-            Label("Share", systemImage: "square.and.arrow.up")
-        }
+        SongsListView(
+            sortDescriptor: Song.defaultSort(for: sortKey, direction: direction),
+            searchText: debouncedSearchText,
+            onSongInfo: { song in songInfoTarget = song },
+            onToggleFavorite: { song in toggleFavorite(song) },
+            onDelete: { song in libraryService?.delete(song) },
+            onShuffle: shuffleAll,
+            onPlayAll: playAll,
+            onOpenSortMenu: { showingSortMenu = true }
+        )
     }
 
     // MARK: - Actions
 
     private func shuffleAll() {
-        let order = songs.shuffled()
+        let order = allSongs.shuffled()
         guard let service = libraryService else { return }
         let requests = service.playbackRequests(for: order)
         audioEngine.playQueue(requests)
@@ -266,7 +208,7 @@ struct LibraryView: View {
 
     private func playAll() {
         guard let service = libraryService else { return }
-        let requests = service.playbackRequests(for: songs)
+        let requests = service.playbackRequests(for: allSongs)
         audioEngine.playQueue(requests)
         presentingNowPlaying = true
     }
@@ -288,25 +230,14 @@ struct LibraryView: View {
         )
         Task { await audioEngine.send(.load(request)) }
     }
-
-    // MARK: - @Query rebuild on sort change
-
-    private func updateQuery() {
-        // SwiftData `@Query` can't be mutated from inside the view's
-        // `body`. We dispatch a single sentinel assignment via the
-        // background queue that hands off to a fresh `Query` so the
-        // list re-fetches with the new SortDescriptor.
-        let newDescriptor = Song.defaultSort(for: sortKey, direction: direction)
-        let refreshed = Query<Song>(filter: nil, sort: [newDescriptor])
-        _songs = refreshed
-    }
 }
 
 // MARK: - Sort descriptor factory
 
 extension Song {
     /// Build a `SortDescriptor<Song>` for a given key + direction.
-    /// Used by `@Query` both at first render and on user sort change.
+    /// Used by `SongsListView` both at first render and on user sort
+    /// change (a new descriptor → `init` re-binds the inner @Query).
     static func defaultSort(
         for key: LibrarySortKey,
         direction: SortDirection

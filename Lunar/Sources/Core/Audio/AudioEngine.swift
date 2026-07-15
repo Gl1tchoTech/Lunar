@@ -109,6 +109,21 @@ final class AudioEngine: AudioPlayerInterface {
     /// gap separates tracks.
     var gaplessEnabled: Bool = true
 
+    /// Whether `playQueue(_:startIndex:)` reshuffles the passed list,
+    /// keeping the song resolved by `startIndex` pinned to position 0
+    /// (Apple Music behaviour). Default **`.off`** — caller order is
+    /// preserved. Mirrored from `QueueSettings.shuffleMode` via
+    /// `LunarAppCoordinator.onChange`.
+    var shuffleMode: ShuffleMode = .off
+
+    /// End-of-queue looping behaviour. Default **`.off`** — playback
+    /// pauses when the queue ends. **`.one`** re-seeks the current song
+    /// to `0` and replays it (still fires `onSongFinished` once per
+    /// natural end so `ListenEvent`s keep recording). **`.all`** wraps
+    /// the queue pointer back to `0` and continues. Mirrored from
+    /// `QueueSettings.repeatMode` via `LunarAppCoordinator.onChange`.
+    var repeatMode: RepeatMode = .off
+
     private var session: AppAudioSession?
     private var sessionEvents: AnyCancellable?
     private var progressTimer: AnyCancellable?
@@ -318,11 +333,42 @@ final class AudioEngine: AudioPlayerInterface {
     /// this queue.
     func playQueue(_ requests: [PlaybackRequest], startIndex: Int = 0) {
         guard !requests.isEmpty else { return }
-        let clamped = max(0, min(startIndex, requests.count - 1))
-        queue = requests
-        queueIndex = clamped
-        let first = queue[clamped]
+        let (newQueue, newIndex) = Self.buildQueue(
+            requests: requests,
+            startIndex: startIndex,
+            shuffleMode: shuffleMode
+        )
+        queue = newQueue
+        queueIndex = newIndex
+        let first = queue[queueIndex]
         Task { await self.send(.load(first)); self.play() }
+    }
+
+    /// Pure helper that builds the in-memory queue based on the shuffle
+    /// mode. Lifted out of `playQueue(_:startIndex:)` so unit tests can
+    /// verify shuffle-pinning behaviour without spinning up
+    /// `AVAudioEngine`.
+    ///
+    /// Returns `(queue, queueIndex)`. `ShuffleMode.on` with ≥ 2 songs
+    /// pins the song at `startIndex` to position 0 and shuffles the
+    /// rest (Apple Music behaviour). Otherwise the queue is taken in
+    /// call-site order.
+    static func buildQueue(
+        requests: [PlaybackRequest],
+        startIndex: Int,
+        shuffleMode: ShuffleMode
+    ) -> (queue: [PlaybackRequest], queueIndex: Int) {
+        guard !requests.isEmpty else { return ([], 0) }
+        let clamped = max(0, min(startIndex, requests.count - 1))
+        if shuffleMode == .on, requests.count > 1 {
+            let pinned = requests[clamped]
+            let tail = requests.enumerated()
+                .filter { $0.offset != clamped }
+                .map(\.element)
+                .shuffled()
+            return ([pinned] + tail, 0)
+        }
+        return (requests, clamped)
     }
 
     /// Append a song to play **after the current song**, then continue
@@ -472,17 +518,48 @@ final class AudioEngine: AudioPlayerInterface {
         // Auto-advance: if the queue has more, step into `next()`.
         // Otherwise, end the session cleanly.
         progressTimer?.cancel()
+
+        // Repeat.one — replay current song from 0. Beats `next()` so it
+        // wins even when more songs exist in the queue. Still fires
+        // `onSongFinished` once per natural completion so ListenEvent
+        // recording stays correct.
+        if repeatMode == .one, currentFile != nil, queueIndex >= 0, queueIndex < queue.count {
+            let finishedSong = queue[queueIndex]
+            onSongFinished?(finishedSong, state.duration)
+            scheduleCurrentNode(from: 0)
+            currentNode.play()
+            state.currentTime = 0
+            notifyStateChange()
+            startProgressTicker()
+            return
+        }
+
         let hasMore = queueIndex + 1 < queue.count
         let validIndex = queueIndex >= 0 && queueIndex < queue.count
+
         if hasMore, validIndex {
             let finishedSong = queue[queueIndex]
             onSongFinished?(finishedSong, state.duration)
             next()
-        } else {
-            state.isPlaying = false
-            state.currentTime = 0
-            notifyStateChange()
+            return
         }
+
+        // End of queue. Repeat.all wraps back to index 0; .off pauses.
+        if repeatMode == .all, validIndex, !queue.isEmpty {
+            let finishedSong = queue[queueIndex]
+            onSongFinished?(finishedSong, state.duration)
+            queueIndex = 0
+            let request = queue[queueIndex]
+            Task {
+                await self.send(.load(request))
+                self.play()
+            }
+            return
+        }
+
+        state.isPlaying = false
+        state.currentTime = 0
+        notifyStateChange()
     }
 
     // MARK: - Progress / state

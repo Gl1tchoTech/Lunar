@@ -6,6 +6,101 @@ All notable changes to **Lunar** are documented here. The format follows
 
 ## [Unreleased]
 
+### Step 5 — Tier 5: Player UX polish ✅
+
+Four surfaces wired end-to-end against the existing playback, model,
+and view layers — no schema changes, no engine rewrites.
+
+#### Part 1 — Shuffle + Repeat state persistence
+
+- **`QueueMode.swift`** (`Lunar/Sources/Core/Audio/QueueMode.swift`) — NEW. Two
+  `Sendable + Codable` enums: `ShuffleMode { .off, .on }`,
+  `RepeatMode { .off, .all, .one }`. Both expose `systemImage: String`
+  for the TransportRow glyph contract (off → outline, on → filled circle).
+- **`QueueSettings.swift`** mirrors the `PlaybackSettings` template:
+  `@MainActor @Observable final class`, `didSet` writes `UserDefaults`
+  + fires `onChange`. Convenience `cycleRepeatMode()` (off→all→one→off,
+  Apple Music cycle order) and `toggleShuffleMode()` (binary).
+- **`AudioEngine` surgical additions**: `var shuffleMode: ShuffleMode
+  = .off` + `var repeatMode: RepeatMode = .off`. **`playQueue(_:startIndex:)`
+  now pins the requested song to position 0 and shuffles the tail when
+  `shuffleMode == .on`**. **`handleNextNodeCompleted` branches on
+  repeat**: `.one` re-seeks current song to 0 + replays (still fires
+  `onSongFinished`), `.all` wraps back to index 0, `.off` keeps
+  the existing pause-on-end behaviour. **Extracted
+  `static func buildQueue(...)` from `playQueue`** so the shuffle-pinning
+  logic is unit-testable without an `AVAudioEngine` running.
+- **`TransportRow.swift` rewrite**: shuffle + repeat buttons now read
+  `@Environment(QueueSettings.self)` (single source of truth) and
+  mutate `queueSettings.shuffleMode / .repeatMode` directly.
+  Accessibility labels/shints differentiate each mode.
+- **`LunarAppCoordinator` wiring**: symmetric with `PlaybackSettings` —
+  warm-up push + `onChange` mirror from `QueueSettings` → live
+  engine mirrors.
+- **`QueueSettingsTests`** (15 tests) — defaults, persistence,
+  round-trip restoration, didSet-only-on-change, cycle helpers, system
+  image uniqueness.
+
+#### Part 2 — `My Favorites` smart-playlist tile
+
+- **`SmartPlaylistTile.Kind`** extended with `.favorites` (heart.fill
+  SF Symbol, `[.red, .pink]` gradient). Tile is `--width:170` so the
+  row stays predictable.
+- **`PlaylistView`** wraps the three tiles in a horizontal scroll to
+  keep iPhone width comfortable. New `@State favorites: [Song]`
+  property hydrated from `LibraryService.favoriteSongs()` in `.task`.
+- **`PlaylistDetailView`** already supports `.heart` hero style for
+  the Favorites path — no changes needed.
+
+#### Part 3 — Library search bar
+
+- **`LibrarySearch.swift`** (`Lunar/Sources/Core/Library/LibrarySearch.swift`) — NEW.
+  `static func filter(_ songs: [Song], by query: String) -> [Song]`.
+  Pure Swift, dependency-free, importable from tests without SwiftUI.
+  Trims + empty-checks + case-insensitive (`localizedLowercase`)
+  matching across `title`, `artist`, and `albumTitle`.
+- **`SongsListView.swift`** (`Lunar/Sources/Features/Library/SongsListView.swift`) — NEW.
+  Extracted Songs-tab body that owns its own `SortDescriptor`-bound
+  `@Query` (works around the iOS 17 SwiftData `self` immutability
+  trap). Receives `sortDescriptor`, `searchText`, and closure
+  callbacks for actions. Re-init on `sortDescriptor` change re-binds
+  the inner `@Query` cleanly.
+- **`LibraryView` rewrite**: `.searchable` modifier + `.task(id: searchText)`
+  debounces 250 ms (cancels + restarts on every keystroke). New
+  `.sheet(item: $songInfoTarget)` — `.sheet(item:)` replaces the old
+  `.isPresented + selectedSong` double state that drifted.
+- **`LibrarySearchTests`** (12 tests) — pinning all three fields,
+  case-insensitivity, diacritic matches, empty/whitespace handling,
+  nil-album safety.
+
+#### Part 4 — Song Info sheet
+
+- **`SongInfoSheet.swift`** (`Lunar/Sources/Features/Library/SongInfoSheet.swift`) — NEW.
+  SwiftUI `Form` in a `NavigationStack`, five sections:
+  - **Identity** — title / artist / album? / track? / year?
+  - **Audio** — format? / bitrate? / sample rate? / bit depth? /
+    duration / file size (`ByteCountFormatter`)
+  - **File** — fileName (truncating middle) / play count
+  - **Lyrics** — synced status + import hint
+  - **Actions** — Menu picker for "Add to Playlist"
+    (queries user playlists via `FetchDescriptor`), Favorite toggle,
+    `ShareLink` against the resolved song URL
+- Presented from **`LibraryView`**.contextMenu and `onTapGesture`
+  on `SongRow`. Closes via the toolbar Done button.
+
+#### Tests added
+
+- `Tests/LunarTests/QueueSettingsTests.swift` — 15 tests.
+- `Tests/LunarTests/AudioEngineQueueBuildTests.swift` — 8 tests
+  (regression-free shuffle pinning).
+- `Tests/LunarTests/LibrarySearchTests.swift` — 12 tests.
+
+#### Deferred (per locked deferrals)
+
+- Feedback / Rate Us / Privacy destinations: not touched.
+- Browse downloader / streamer backend: not touched.
+- Wi-Fi Drive: not touched.
+
 ### Step 5 — Tier 4: Settings polish ✅
 
 - **`AppMetadata`** (`Lunar/Sources/Core/Config/AppMetadata.swift`) — NEW single source of truth for app-level data: `version` (reads `CFBundleShortVersionString`), `build` (reads `CFBundleVersion`), `bundleIdentifier`, `displayName`, `repositoryURL` (`https://github.com/Gl1tchoTech/Lunar`), and `copyrightYear`. Computed once at process launch. `versionAndBuild` formats as `"<version> (<build>)"` so Views don't reimplement the layout. Falls back to `"unknown"` when keys are missing so misconfiguration surfaces loudly instead of silently in the UI.

@@ -162,7 +162,7 @@ All themes share the same information architecture — only the visual chrome ch
 - [x] **`AppMetadataTests`** — 7 tests pinning the version+build format, repo URL host + path, bundle ID, copyright year.
 
 ### ⏭ Up next (Tier 5 → Tier 7)
-- [ ] Tier 5 — Player UX polish: persist Shuffle + Repeat across relaunch, "My Favorites" smart playlist tile, Library search bar, full Song Info sheet
+- [x] **Step 5 — Tier 5**: Shuffle + Repeat persistence (`QueueSettings` + `QueueMode` enums + `AudioEngine.buildQueue` static + `TransportRow` reads QueueSettings so mirror → UserDefaults), `My Favorites` smart-playlist tile (third in the horizontal-scroll row), Library search bar (`.searchable` + `.task(id:)` 250 ms debounce `SongsListView` subview), and `SongInfoSheet` (Form-style with Identity / Audio / File / Lyrics / Actions + `Menu` playlist picker + `ShareLink`).
 - [ ] Tier 6 — Import surface expansion: Other Apps handoff, branded Cloud Providers (Wi-Fi Drive explicitly deferred per user)
 - [ ] Tier 7 — Browse downloader / streamer (placeholder today; user-deferred until they say otherwise)
 
