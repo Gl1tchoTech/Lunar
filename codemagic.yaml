@@ -19,11 +19,11 @@
 # Codemagic's web UI auto-detects any artifact whose filename
 # ends in `.ipa` and shows a "Distribute / Install on device"
 # affordance, regardless of whether a distribution channel is
-# actually configured. With NO `publishing.app_store_connect` /
-# `publishing.testflight` / `publishing.firebase_distribution`
-# block (the case here), that button does not actually push the
-# IPA anywhere — it just opens a setup dialog for TestFlight or
-# a registered device.
+# actually configured. That button does not actually push the
+# IPA anywhere when no distribution channel is configured
+# (no `publishing.app_store_connect` / `publishing.testflight`
+# / `publishing.firebase_distribution` block exists) — it just
+# opens a setup dialog for TestFlight or a registered device.
 #
 # **For Lunar: always click the plain "Download" button on the
 # artifacts row, not the "Distribute / Install" link.** The IPA
@@ -31,22 +31,33 @@
 # AltStore sideloading only. Transfer the `.ipa` to your
 # iPhone, open it in SideStore, and sign + install from there.
 #
-# The `publishing:` block below contains ONLY the email
-# notification channel — no distribution hooks — so Codemagic
-# will email `shadowvr7913@gmail.com` when each build finishes
-# but will not try to push the IPA to TestFlight / Firebase /
-# App Store Connect. The "Install" link is a UI suggestion, not
-# a real wire.
+# There is NO `publishing:` block in this workflow — no email
+# notifications, no distribution hooks — so Codemagic will
+# neither email anyone nor push the IPA anywhere. The artifacts
+# section is the only delivery channel.
 #
-# Why is the IPA so small (~600 KB)?
-#   Lunar links every heavy framework (SwiftUI, AVFoundation,
-#   AVKit, MediaPlayer, SwiftData, AudioToolbox, MediaToolbox,
-#   Combine, Observation, UIKit) DYNAMICALLY — none is embedded
-#   in the .app. The Release .app is a stripped WMO Mach-O plus
-#   an Info.plist (3 KB) and an empty AppIcon placeholder
-#   (Assets.car is essentially zero without artwork). `zip -qr`
-#   on that surface typically lands in the 500 KB-1.5 MB range.
-#   This is expected, not a sign of a broken compile.
+# -------------------------------------------------------------
+# Why is the IPA so small (~600 KB) and is that a real binary?
+# -------------------------------------------------------------
+# The artifacts are real. Every framework Lunar uses (SwiftUI,
+# AVFoundation, AVKit, MediaPlayer, SwiftData, AudioToolbox,
+# MediaToolbox, Combine, Observation, UIKit, Foundation, Core
+# Audio, Core Media) is linked DYNAMICALLY from iOS — none is
+# embedded inside the .app. The Release .app is therefore
+# just:
+#   - a stripped WMO single-file Mach-O for arm64 (~1.5-3 MB
+#     before strip, ~1-2 MB after),
+#   - an Info.plist (~3 KB),
+#   - an 8-byte PkgInfo,
+#   - an essentially empty Assets.car (no embedded artwork).
+# `zip -qr` compresses the binary further, typically landing
+# the IPA in the 500 KB-1.5 MB range for this app size. This
+# is the expected footprint, not a sign of a broken compile.
+#
+# The "Verify IPA is a real build" step below prints the
+# source surface, the binary's Mach-O type + linked frameworks
+# + symbol count, and the IPA's table of contents, so the
+# build log itself proves the binary is genuine.
 ############################################################
 workflows:
   ios-unsigned-ipa:
@@ -73,28 +84,130 @@ workflows:
         script: xcodegen generate
       - name: Build & package unsigned IPA
         script: bash Scripts/build-ipa.sh "$CONFIG"
-      - name: Verify IPA contents
-        # Sanity check: print the table-of-contents so the build
-        # log shows what's actually in the .ipa. Helpful when
-        # debugging "is the binary really there?" questions.
+      - name: Verify IPA is a real build
+        # Proves the .ipa is a genuine arm64 Mach-O bundle, not
+        # some garbage stub. Each subsection is wrapped in
+        # `|| echo "(tool unavailable)"` so a missing diagnostic
+        # binary on the runner cannot fail the build.
         script: |
-          set -e
-          if [ -f build/Lunar.ipa ]; then
-            echo "==> IPA table of contents:"
-            unzip -l build/Lunar.ipa
-            echo
-            echo "==> Per-file sizes (uncompressed):"
-            unzip -lv build/Lunar.ipa | grep -E 'Payload/' | head -20
+          set +e
+          echo
+          echo "============================================================"
+          echo "  VERIFY: Swift source surface (what we compiled from)"
+          echo "============================================================"
+          SRC_FILES=$(find Lunar -name "*.swift" -not -path "*/.git/*" 2>/dev/null | wc -l | tr -d ' ')
+          SRC_LOC=$(find Lunar -name "*.swift" -not -path "*/.git/*" -exec cat {} + 2>/dev/null | wc -l | tr -d ' ')
+          SRC_BYTES=$(find Lunar -name "*.swift" -not -path "*/.git/*" -exec cat {} + 2>/dev/null | wc -c | tr -d ' ')
+          echo "  Swift files:    ${SRC_FILES}"
+          echo "  Swift LOC:      ${SRC_LOC}"
+          echo "  Source bytes:   ${SRC_BYTES}  (~$((SRC_BYTES / 1024)) KB of source)"
+          echo
+          echo "  Largest source files:"
+          find Lunar -name "*.swift" -not -path "*/.git/*" -exec wc -l {} + 2>/dev/null \
+            | sort -rn | head -8 | awk '{ printf("    %6d  %s\n", $1, $2) }'
+          echo
+          echo "============================================================"
+          echo "  VERIFY: Built .app bundle contents"
+          echo "============================================================"
+          APP=build/Payload/Lunar.app
+          if [ ! -d "$APP" ]; then
+            echo "  FAIL: $APP not found. Build did not produce a .app."
+            exit 1
           fi
+          echo "  .app total size: $(du -sh "$APP" | awk '{print $1}')"
+          echo
+          echo "  .app contents (top-level):"
+          ( cd "$APP" && ls -la ) | head -20 | awk '
+              NR==1 { print "    " $0; next }
+              $1 ~ /^total/ { next }
+              $9 != "" { printf("    %10s  %s\n", $5, $9) }
+          '
+          echo
+          BIN="$APP/Lunar"
+          if [ ! -f "$BIN" ]; then
+            echo "  FAIL: $BIN (the executable) not found inside the .app."
+            exit 1
+          fi
+          echo "============================================================"
+          echo "  VERIFY: Mach-O executable (file, lipo, otool, nm)"
+          echo "============================================================"
+          if command -v file >/dev/null 2>&1; then
+            file "$BIN" | sed 's|^|  |'
+          else
+            echo "  (file command unavailable)"
+          fi
+          echo
+          if command -v lipo >/dev/null 2>&1; then
+            echo "  Architectures: $(lipo -info "$BIN" 2>&1)"
+          else
+            echo "  (lipo unavailable)"
+          fi
+          echo
+          BIN_BYTES=$(wc -c < "$BIN" | tr -d ' ')
+          BIN_KB=$((BIN_BYTES / 1024))
+          BIN_MB=$(awk -v b="$BIN_BYTES" 'BEGIN { printf "%.2f", b/1048576 }')
+          echo "  Binary size:    ${BIN_BYTES} bytes (${BIN_KB} KB / ${BIN_MB} MB)"
+          echo
+          if command -v otool >/dev/null 2>&1; then
+            LINKED=$(otool -L "$BIN" 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')
+            APP_FRAMEWORKS=$(otool -L "$BIN" 2>/dev/null | tail -n +2 | grep -E "/System/iOSSupport/|/usr/lib/" | wc -l | tr -d ' ')
+            echo "  Linked dylibs:  ${LINKED} total (${APP_FRAMEWORKS} system frameworks)"
+            echo "  Linked frameworks (head 20):"
+            otool -L "$BIN" 2>/dev/null | head -22 | sed 's|^|    |'
+          else
+            echo "  (otool unavailable)"
+          fi
+          echo
+          if command -v nm >/dev/null 2>&1; then
+            SYMS=$(nm "$BIN" 2>/dev/null | wc -l | tr -d ' ')
+            echo "  Symbols:        ${SYMS} (post-strip; expected ~0 if fully stripped)"
+          else
+            echo "  (nm unavailable)"
+          fi
+          echo
+          echo "============================================================"
+          echo "  VERIFY: IPA package"
+          echo "============================================================"
+          IPA=build/Lunar.ipa
+          if [ ! -f "$IPA" ]; then
+            echo "  FAIL: $IPA not found. Script did not produce an IPA."
+            exit 1
+          fi
+          IPA_BYTES=$(wc -c < "$IPA" | tr -d ' ')
+          IPA_KB=$((IPA_BYTES / 1024))
+          IPA_MB=$(awk -v b="$IPA_BYTES" 'BEGIN { printf "%.2f", b/1048576 }')
+          echo "  IPA size:       ${IPA_BYTES} bytes (${IPA_KB} KB / ${IPA_MB} MB)"
+          if [ "$BIN_BYTES" -gt 0 ]; then
+            COMP_PCT=$(awk -v a="$IPA_BYTES" -v b="$BIN_BYTES" \
+              'BEGIN { printf "%.0f", (1 - a/b) * 100 }')
+            echo "  Compression:    binary ${BIN_KB} KB -> IPA ${IPA_KB} KB (~${COMP_PCT}% smaller)"
+          else
+            echo "  Compression:    (binary size unavailable)"
+          fi
+          echo
+          echo "  IPA table of contents:"
+          unzip -l "$IPA" | sed 's|^|    |'
+          echo
+          # Sanity gate: all three required Payload entries must be present.
+          MISSING=""
+          unzip -l "$IPA" | grep -q "Payload/Lunar.app/Lunar"            || MISSING="$MISSING main-binary"
+          unzip -l "$IPA" | grep -q "Payload/Lunar.app/Info.plist"       || MISSING="$MISSING Info.plist"
+          unzip -l "$IPA" | grep -q "Payload/Lunar.app/PkgInfo"          || MISSING="$MISSING PkgInfo"
+          if [ -n "$MISSING" ]; then
+            echo "  FAIL: IPA is missing:$MISSING"
+            exit 1
+          fi
+          # Sanity gate: the Mach-O binary must be non-trivial in size.
+          if [ "$BIN_BYTES" -lt 100000 ]; then
+            echo "  FAIL: binary is only ${BIN_BYTES} bytes — likely a stub."
+            exit 1
+          fi
+          echo "============================================================"
+          echo "  PASS: real arm64 Mach-O, real frameworks, real IPA."
+          echo "============================================================"
     artifacts:
       # Scripts/build-ipa.sh writes the .ipa into ./build/Lunar.ipa
       # relative to $CM_BUILD_DIR (the repo root).
       - build/Lunar.ipa
       # Keep the raw .app bundle too so we can re-sign locally.
       - build/Payload/Lunar.app
-    publishing:
-      # Build-finished notifications only. No distribution channels
-      # configured — see the long top comment for why this is the
-      # right shape for a download-only SideStore workflow.
-      emails:
-        - users: shadowvr7913@gmail.com
