@@ -154,7 +154,10 @@ enum AudioMetadataExtractor {
                 return Calendar.current.component(.year, from: asDate)
             }
             if let asStr = item.stringValue {
-                return asStr.prefix(4).intValue
+                // `prefix(_:)` returns `Substring`; our `intValue`
+                // extension is defined on `String` only, so we must
+                // hop through `String(...)` before parsing.
+                return String(asStr.prefix(4)).intValue
             }
             return nil
         }()
@@ -261,8 +264,13 @@ enum AudioMetadataExtractor {
             bitrate = Int(estimatedBitsPerSecond)
         }
         for anyDesc in track.formatDescriptions {
-            guard let desc = anyDesc as? CMFormatDescription,
-                  let basic = CMAudioFormatDescriptionGetStreamBasicDescription(desc)
+            // `track.formatDescriptions` is `[CMFormatDescription]`
+            // in the iOS 17 SDK, so the conditional downcast
+            // (`as?`) always succeeds and the compiler warns. Force-
+            // bind (`as!`) is the idiomatic fix here — the array is
+            // already typed and unsafe to begin with.
+            let desc = anyDesc as! CMFormatDescription
+            guard let basic = CMAudioFormatDescriptionGetStreamBasicDescription(desc)
             else { continue }
             if sampleRate == nil { sampleRate = basic.pointee.mSampleRate }
             if bitDepth   == nil { bitDepth   = Int(basic.pointee.mBitsPerChannel) }
