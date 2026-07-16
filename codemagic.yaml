@@ -48,4 +48,4 @@ workflows:
       # No App Store / TestFlight distribution — sideloading is local.
       # TODO: wire email/Discord notifications if you want build alerts.
       emails:
-        - users: none
+        - users: shadowvr7913@gmail.com
