@@ -44,8 +44,5 @@ workflows:
       - build/Lunar.ipa
       # Keep the raw .app bundle too so we can re-sign locally.
       - build/Payload/Lunar.app
-    publishing:
-      # No App Store / TestFlight distribution — sideloading is local.
-      # TODO: wire email/Discord notifications if you want build alerts.
-      emails:
-        - users: shadowvr7913@gmail.com
+
+      
