@@ -12,6 +12,41 @@
 #   runner already ships an Xcode that reads modern pbxproj
 #   formats natively, so we drop the patch. If the IPA ever
 #   fails to open in older Xcodes, add the perl block back.
+#
+# -------------------------------------------------------------
+# "Install" vs "Download" on the Codemagic build page
+# -------------------------------------------------------------
+# Codemagic's web UI auto-detects any artifact whose filename
+# ends in `.ipa` and shows a "Distribute / Install on device"
+# affordance, regardless of whether a distribution channel is
+# actually configured. With NO `publishing.app_store_connect` /
+# `publishing.testflight` / `publishing.firebase_distribution`
+# block (the case here), that button does not actually push the
+# IPA anywhere — it just opens a setup dialog for TestFlight or
+# a registered device.
+#
+# **For Lunar: always click the plain "Download" button on the
+# artifacts row, not the "Distribute / Install" link.** The IPA
+# in this workflow is unsigned and intended for SideStore /
+# AltStore sideloading only. Transfer the `.ipa` to your
+# iPhone, open it in SideStore, and sign + install from there.
+#
+# The `publishing:` block below contains ONLY the email
+# notification channel — no distribution hooks — so Codemagic
+# will email `shadowvr7913@gmail.com` when each build finishes
+# but will not try to push the IPA to TestFlight / Firebase /
+# App Store Connect. The "Install" link is a UI suggestion, not
+# a real wire.
+#
+# Why is the IPA so small (~600 KB)?
+#   Lunar links every heavy framework (SwiftUI, AVFoundation,
+#   AVKit, MediaPlayer, SwiftData, AudioToolbox, MediaToolbox,
+#   Combine, Observation, UIKit) DYNAMICALLY — none is embedded
+#   in the .app. The Release .app is a stripped WMO Mach-O plus
+#   an Info.plist (3 KB) and an empty AppIcon placeholder
+#   (Assets.car is essentially zero without artwork). `zip -qr`
+#   on that surface typically lands in the 500 KB-1.5 MB range.
+#   This is expected, not a sign of a broken compile.
 ############################################################
 workflows:
   ios-unsigned-ipa:
@@ -38,11 +73,28 @@ workflows:
         script: xcodegen generate
       - name: Build & package unsigned IPA
         script: bash Scripts/build-ipa.sh "$CONFIG"
+      - name: Verify IPA contents
+        # Sanity check: print the table-of-contents so the build
+        # log shows what's actually in the .ipa. Helpful when
+        # debugging "is the binary really there?" questions.
+        script: |
+          set -e
+          if [ -f build/Lunar.ipa ]; then
+            echo "==> IPA table of contents:"
+            unzip -l build/Lunar.ipa
+            echo
+            echo "==> Per-file sizes (uncompressed):"
+            unzip -lv build/Lunar.ipa | grep -E 'Payload/' | head -20
+          fi
     artifacts:
       # Scripts/build-ipa.sh writes the .ipa into ./build/Lunar.ipa
       # relative to $CM_BUILD_DIR (the repo root).
       - build/Lunar.ipa
       # Keep the raw .app bundle too so we can re-sign locally.
       - build/Payload/Lunar.app
-
-      
+    publishing:
+      # Build-finished notifications only. No distribution channels
+      # configured — see the long top comment for why this is the
+      # right shape for a download-only SideStore workflow.
+      emails:
+        - users: shadowvr7913@gmail.com
