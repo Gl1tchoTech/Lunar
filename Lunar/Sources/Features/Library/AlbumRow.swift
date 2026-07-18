@@ -2,8 +2,6 @@ import SwiftUI
 import SwiftData
 
 /// Row representing a single album in the Library Albums tab.
-///
-/// Layout: 56pt square cover · album title · artist · `N songs | duration`.
 @MainActor
 struct AlbumRow: View {
 
@@ -13,10 +11,12 @@ struct AlbumRow: View {
         HStack(spacing: Spacing.m) {
             artworkThumb
                 .frame(width: 56, height: 56)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(album.title)
                     .font(Typography.body)
+                    .fontWeight(.semibold)
                     .foregroundStyle(ColorTokens.textPrimary)
                     .lineLimit(1)
                 Text(album.artist)
@@ -28,9 +28,15 @@ struct AlbumRow: View {
                     .foregroundStyle(ColorTokens.textTertiary)
                     .monospacedDigit()
             }
+
             Spacer(minLength: Spacing.s)
         }
-        .padding(.vertical, Spacing.xs)
+        .padding(.horizontal, Spacing.m)
+        .padding(.vertical, Spacing.s)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(ColorTokens.surface)
+        )
         .contentShape(Rectangle())
     }
 
@@ -48,7 +54,7 @@ struct AlbumRow: View {
                 .scaledToFill()
         } else {
             ZStack {
-                ColorTokens.surface
+                ColorTokens.elevated
                 Image(systemName: "square.stack.fill")
                     .font(.system(size: 22, weight: .light))
                     .foregroundStyle(ColorTokens.textTertiary)

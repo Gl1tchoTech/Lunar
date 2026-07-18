@@ -2,11 +2,6 @@ import SwiftUI
 import SwiftData
 
 /// Row representing a single artist in the Library Artists tab.
-///
-/// Layout: 48pt circular portrait · name (1 line) · `N songs | duration`.
-///
-/// Artists are derived on-the-fly from `Song.artistEntity` via the
-/// `@Query` in `ArtistsView` — we don't store a separate row anymore.
 @MainActor
 struct ArtistRow: View {
 
@@ -15,11 +10,13 @@ struct ArtistRow: View {
     var body: some View {
         HStack(spacing: Spacing.m) {
             artworkThumb
-                .frame(width: 48, height: 48)
-                .clipShape(Circle())
+                .frame(width: 52, height: 52)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(artist.name)
                     .font(Typography.body)
+                    .fontWeight(.semibold)
                     .foregroundStyle(ColorTokens.textPrimary)
                     .lineLimit(1)
                 Text(footerText)
@@ -27,9 +24,15 @@ struct ArtistRow: View {
                     .foregroundStyle(ColorTokens.textSecondary)
                     .lineLimit(1)
             }
+
             Spacer(minLength: Spacing.s)
         }
-        .padding(.vertical, Spacing.xs)
+        .padding(.horizontal, Spacing.m)
+        .padding(.vertical, Spacing.s)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(ColorTokens.surface)
+        )
         .contentShape(Rectangle())
     }
 
@@ -47,7 +50,7 @@ struct ArtistRow: View {
                 .scaledToFill()
         } else {
             ZStack {
-                ColorTokens.surface
+                ColorTokens.elevated
                 Image(systemName: "person.fill")
                     .font(.system(size: 22, weight: .light))
                     .foregroundStyle(ColorTokens.textTertiary)

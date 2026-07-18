@@ -1,10 +1,6 @@
 import SwiftUI
 
 /// A single user-created playlist row in the Playlist tab.
-///
-/// Layout: 48pt square icon thumb · title · `N songs | duration`.
-/// `My Favorites` gets a heart glyph; user-created playlists get a
-/// small tone-generic thumb.
 @MainActor
 struct LocalPlaylistRow: View {
 
@@ -13,11 +9,13 @@ struct LocalPlaylistRow: View {
     var body: some View {
         HStack(spacing: Spacing.m) {
             iconThumb
-                .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .frame(width: 52, height: 52)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(playlist.title)
                     .font(Typography.body)
+                    .fontWeight(.semibold)
                     .foregroundStyle(ColorTokens.textPrimary)
                     .lineLimit(1)
                 Text("\(playlist.songs.count) song\(playlist.songs.count == 1 ? "" : "s") | \(formatTotal(playlistDuration))")
@@ -26,9 +24,15 @@ struct LocalPlaylistRow: View {
                     .monospacedDigit()
                     .lineLimit(1)
             }
+
             Spacer(minLength: Spacing.s)
         }
-        .padding(.vertical, Spacing.xs)
+        .padding(.horizontal, Spacing.m)
+        .padding(.vertical, Spacing.s)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(ColorTokens.surface)
+        )
         .contentShape(Rectangle())
     }
 
@@ -36,14 +40,14 @@ struct LocalPlaylistRow: View {
     private var iconThumb: some View {
         if playlist.title == "My Favorites" {
             ZStack {
-                ColorTokens.surface
+                ColorTokens.elevated
                 Image(systemName: "heart.fill")
                     .font(.system(size: 22))
                     .foregroundStyle(ColorTokens.destructive)
             }
         } else {
             ZStack {
-                ColorTokens.surface
+                ColorTokens.elevated
                 Image(systemName: "music.note")
                     .font(.system(size: 22, weight: .light))
                     .foregroundStyle(ColorTokens.textTertiary)

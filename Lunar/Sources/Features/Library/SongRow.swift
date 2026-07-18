@@ -2,9 +2,6 @@ import SwiftUI
 import SwiftData
 
 /// A single song row for the Library "Songs" list.
-///
-/// Layout: 48pt square artwork thumb · title (1 line) · artist
-/// (secondary, 1 line) · optional duration on the trailing edge.
 @MainActor
 struct SongRow: View {
 
@@ -14,11 +11,13 @@ struct SongRow: View {
     var body: some View {
         HStack(spacing: Spacing.m) {
             artworkThumb
-                .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .frame(width: 52, height: 52)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(song.title)
                     .font(Typography.body)
+                    .fontWeight(.semibold)
                     .foregroundStyle(ColorTokens.textPrimary)
                     .lineLimit(1)
                 Text(song.artist)
@@ -26,13 +25,26 @@ struct SongRow: View {
                     .foregroundStyle(ColorTokens.textSecondary)
                     .lineLimit(1)
             }
+
             Spacer(minLength: Spacing.s)
+
+            if song.isFavorite {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(ColorTokens.appAccent)
+            }
+
             Text(durationString(song.duration))
-                .font(Typography.caption2)
+                .font(Typography.caption1)
                 .foregroundStyle(ColorTokens.textTertiary)
                 .monospacedDigit()
         }
-        .padding(.vertical, Spacing.xs)
+        .padding(.horizontal, Spacing.m)
+        .padding(.vertical, Spacing.s)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(ColorTokens.surface)
+        )
         .contentShape(Rectangle())
     }
 
@@ -44,9 +56,9 @@ struct SongRow: View {
                 .scaledToFill()
         } else {
             ZStack {
-                ColorTokens.surface
+                ColorTokens.elevated
                 Image(systemName: "music.note")
-                    .font(.system(size: 20, weight: .light))
+                    .font(.system(size: 22, weight: .light))
                     .foregroundStyle(ColorTokens.textTertiary)
             }
         }

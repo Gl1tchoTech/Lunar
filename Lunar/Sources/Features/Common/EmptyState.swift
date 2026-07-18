@@ -1,14 +1,6 @@
 import SwiftUI
 
-/// Reusable empty-state surface.
-///
-/// Used by every list-style screen until real data arrives:
-/// - Centered SF Symbol (or custom View) on top
-/// - Heading in `title2`
-/// - Optional supporting copy
-/// - Optional primary CTA pill
-///
-/// All views should compose this — never reimplement manually.
+/// Reusable empty-state surface with MeloPlayer styling.
 struct EmptyState<Icon: View>: View {
 
     let title: String
@@ -23,10 +15,6 @@ struct EmptyState<Icon: View>: View {
         primaryActionTitle: String? = nil,
         primaryAction: (() -> Void)? = nil,
         @ViewBuilder icon: @escaping () -> Icon = {
-            // Default returns bare `Image` so Swift can infer `Icon == Image`
-            // at call sites that omit an explicit icon closure. Modifiers
-            // (like `.font`) are applied in `body` instead so the generic
-            // parameter still binds to `Image` cleanly.
             Image(systemName: "music.note")
         }
     ) {
@@ -43,11 +31,12 @@ struct EmptyState<Icon: View>: View {
 
             icon()
                 .font(.system(size: 60, weight: .light))
-                .foregroundStyle(ColorTokens.textTertiary)
+                .foregroundStyle(ColorTokens.appAccent.opacity(0.85))
                 .padding(.bottom, Spacing.s)
 
             Text(title)
                 .font(Typography.title2)
+                .fontWeight(.bold)
                 .foregroundStyle(ColorTokens.textPrimary)
                 .multilineTextAlignment(.center)
 
@@ -66,7 +55,7 @@ struct EmptyState<Icon: View>: View {
                         .padding(.horizontal, Spacing.xl)
                         .padding(.vertical, Spacing.s)
                         .background(ColorTokens.appAccent)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.black)
                         .clipShape(Capsule())
                 }
                 .padding(.top, Spacing.m)
@@ -77,15 +66,4 @@ struct EmptyState<Icon: View>: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(Spacing.l)
     }
-}
-
-#Preview {
-    EmptyState(
-        title: "No music yet",
-        message: "Add songs to your library to start listening.",
-        primaryActionTitle: "Import Music",
-        primaryAction: { }
-    )
-    .background(ColorTokens.canvas)
-    .preferredColorScheme(.dark)
 }

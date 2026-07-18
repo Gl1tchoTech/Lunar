@@ -2,43 +2,7 @@ import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
 
-/// Import tab — main surface for bringing local audio into the library.
-///
-/// **Tier 6 update.** Before this rewrite, `isImporting`, `lastImportIDs`,
-/// and `importError` lived as `@State` on this view. That meant URLs
-/// delivered by iOS's **"Open In..."** UI (Other Apps handoff) were
-/// silently dropped whenever the user wasn't sitting on the Import tab.
-/// Those three properties now live on `ImportManager` (an `@Observable`
-/// owned by `LunarApp` and injected into the environment via
-/// `.environment(importManager)`). The view is now a pure presentation
-/// layer that:
-///
-/// 1. Opens the system `.fileImporter` for *manual* file picks.
-/// 2. Forwards picker results to `importManager.enqueueMany`.
-/// 3. Reads `importManager.isImporting` / `lastImportIDs` / `importError`
-///    for display.
-///
-/// The `onOpenURL` scene-level handler in `LunarAppCoordinator` is the
-/// *other* entry point — it lands plain URLs straight into the same
-/// `importManager.enqueue(_:)` queue.
-///
-/// **Surface layout (top → bottom):**
-/// 1. Header — `Import` title with a `+` toolbar button.
-/// 2. Hero CTA → opens the system document picker via SwiftUI's
-///    `.fileImporter` (`.audio` content type).
-/// 3. `Imported Today` — songs added in the most recent import batch.
-/// 4. `All Library` — every imported song sorted by `dateAdded` desc.
-///
-/// **Picker scope** — `UTType.audio` shows Local Files, iCloud Drive,
-/// `On My iPhone`, and any third-party Files providers the user has
-/// installed. `CFBundleDocumentTypes` in `project.yml` also registers
-/// Lunar as an alternate "Open In..." target so external apps (Files,
-/// VLC, Shortcuts) can hand URLs over via `.onOpenURL`.
-///
-/// **Now Playing binding** — held locally as `@State` so the same
-/// flag flip drives both the `.safeAreaInset` `MiniPlayer` (which
-/// writes `true`) **and** the `.fullScreenCover` that opens
-/// `NowPlayingView`.
+/// Import tab with MeloPlayer styling.
 @MainActor
 struct ImportView: View {
 
@@ -49,9 +13,6 @@ struct ImportView: View {
     @Query(sort: [SortDescriptor(\Song.dateAdded, order: .reverse)])
     private var allSongs: [Song]
 
-    /// Local because only this view flips it; the binding is shared
-    /// between the toolbar `+` button, the hero CTA, and the
-    /// `fileImporter` modifier.
     @State private var isPickerPresented = false
     @State private var presentingNowPlaying = false
 
@@ -77,9 +38,6 @@ struct ImportView: View {
             ) { result in
                 handlePicker(result: result)
             }
-            .safeAreaInset(edge: .bottom) {
-                MiniPlayer(isPresented: $presentingNowPlaying)
-            }
             .fullScreenCover(isPresented: $presentingNowPlaying) {
                 NowPlayingView()
                     .environment(audioEngine)
@@ -95,8 +53,6 @@ struct ImportView: View {
             }
         }
     }
-
-    // MARK: - Layouts
 
     private var emptyStatePlaceholder: some View {
         EmptyState(
@@ -114,7 +70,8 @@ struct ImportView: View {
     @ViewBuilder
     private var libraryContent: some View {
         ScrollView {
-            VStack(spacing: Spacing.l) {
+            VStack(alignment: .leading, spacing: Spacing.l) {
+                header
                 heroCard
                 importedTodaySection
                 allLibrarySection
@@ -122,6 +79,16 @@ struct ImportView: View {
             }
             .padding(.horizontal, Spacing.pageHorizontalInset)
             .padding(.top, Spacing.m)
+            .padding(.bottom, 140)
+        }
+    }
+
+    private var header: some View {
+        HStack {
+            Text("Import")
+                .font(Typography.display)
+                .foregroundStyle(ColorTokens.textPrimary)
+            Spacer()
         }
     }
 
@@ -147,9 +114,9 @@ struct ImportView: View {
             .padding(Spacing.m)
             .frame(maxWidth: .infinity)
             .background(ColorTokens.surface)
-            .clipShape(RoundedRectangle(cornerRadius: Spacing.cardCornerRadius, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: Spacing.cardCornerRadius, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(ColorTokens.appAccent.opacity(0.35), lineWidth: 1)
             )
         }
@@ -158,9 +125,6 @@ struct ImportView: View {
 
     @ViewBuilder
     private var importedTodaySection: some View {
-        // Tier 6 — read `lastImportIDs` off the manager so a batch
-        // imported via "Open In..." on a different tab also shows up
-        // here when the user navigates back to Import.
         let recent = allSongs.filter { song in
             importManager.lastImportIDs.contains(song.persistentModelID)
         }
@@ -170,16 +134,11 @@ struct ImportView: View {
                     title: "Imported Today",
                     subtitle: "\(recent.count) \(recent.count == 1 ? "song" : "songs")"
                 )
-                VStack(spacing: 0) {
+                VStack(spacing: Spacing.m) {
                     ForEach(recent) { song in
                         ImportSongRow(song: song, tapHandler: { play(song) })
-                        if song.persistentModelID != recent.last?.persistentModelID {
-                            Divider().background(ColorTokens.hairline)
-                        }
                     }
                 }
-                .background(ColorTokens.surface)
-                .clipShape(RoundedRectangle(cornerRadius: Spacing.cardCornerRadius, style: .continuous))
             }
         }
     }
@@ -190,16 +149,11 @@ struct ImportView: View {
                 title: "All Library",
                 subtitle: "\(allSongs.count) \(allSongs.count == 1 ? "song" : "songs")"
             )
-            VStack(spacing: 0) {
+            VStack(spacing: Spacing.m) {
                 ForEach(allSongs.prefix(20)) { song in
                     ImportSongRow(song: song, tapHandler: { play(song) })
-                    if song.persistentModelID != allSongs.prefix(20).last?.persistentModelID {
-                        Divider().background(ColorTokens.hairline)
-                    }
                 }
             }
-            .background(ColorTokens.surface)
-            .clipShape(RoundedRectangle(cornerRadius: Spacing.cardCornerRadius, style: .continuous))
         }
     }
 
@@ -207,6 +161,7 @@ struct ImportView: View {
         HStack(alignment: .firstTextBaseline) {
             Text(title)
                 .font(Typography.title3)
+                .fontWeight(.bold)
                 .foregroundStyle(ColorTokens.textPrimary)
             Spacer()
             Text(subtitle)
@@ -216,17 +171,12 @@ struct ImportView: View {
         .padding(.horizontal, Spacing.xs)
     }
 
-    // MARK: - Toolbar
-
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             Button {
                 openPicker()
             } label: {
-                // Tier 6 — spinner now reads from the manager so it
-                // also rotates while a batch imported via .onOpenURL
-                // is in flight.
                 if importManager.isImporting {
                     ProgressView()
                         .progressViewStyle(.circular)
@@ -239,8 +189,6 @@ struct ImportView: View {
         }
     }
 
-    // MARK: - Actions
-
     private func openPicker() {
         guard !importManager.isImporting else { return }
         isPickerPresented = true
@@ -250,8 +198,6 @@ struct ImportView: View {
         switch result {
         case .success(let urls):
             guard !urls.isEmpty else { return }
-            // Tier 6 — no local `runImport`. Forward straight to the
-            // manager; the same drain path also handles `.onOpenURL`.
             importManager.enqueueMany(urls)
         case .failure(let error):
             importManager.importError = error.localizedDescription
@@ -268,9 +214,6 @@ struct ImportView: View {
         Task { await audioEngine.playQueue(requests, startIndex: startIndex) }
     }
 
-    /// Drives the post-batch alert. Becomes `true` while the
-    /// manager's `importError` is non-nil; presenter clears it
-    /// back to `nil` on dismissal.
     private var importErrorBinding: Binding<Bool> {
         Binding(
             get: { importManager.importError != nil },
@@ -281,9 +224,6 @@ struct ImportView: View {
 
 // MARK: - ImportSongRow
 
-/// Single row in the Import tab's lists. Mirrors `SongRow` shape but
-/// does not depend on `LibraryService.onToggleFavorite` since the
-/// Import tab is read-only for now (favorites are toggled from Library).
 @MainActor
 private struct ImportSongRow: View {
     let song: Song
@@ -312,6 +252,10 @@ private struct ImportSongRow: View {
             }
             .padding(.horizontal, Spacing.m)
             .padding(.vertical, Spacing.s)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(ColorTokens.surface)
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -324,9 +268,9 @@ private struct ImportSongRow: View {
                 .resizable()
                 .aspectRatio(contentMode: .fill)
                 .frame(width: size, height: size)
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         } else {
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(ColorTokens.elevated)
                 .overlay(
                     Image(systemName: "music.note")
@@ -336,9 +280,6 @@ private struct ImportSongRow: View {
         }
     }
 
-    /// `m:ss` formatter (no leading hour — most pop/electronic tracks
-    /// never hit an hour). Mirrors the Library row formatter so the
-    /// two surfaces stay visually consistent.
     private func formatDuration(_ seconds: TimeInterval) -> String {
         guard seconds.isFinite, seconds > 0 else { return "--:--" }
         let total = Int(seconds.rounded())
@@ -346,11 +287,4 @@ private struct ImportSongRow: View {
         let s = total % 60
         return String(format: "%d:%02d", m, s)
     }
-}
-
-#Preview {
-    ImportView()
-        .environment(AudioEngine())
-        .environment(ImportManager())
-        .preferredColorScheme(.dark)
 }

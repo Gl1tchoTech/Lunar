@@ -1,9 +1,6 @@
 import SwiftUI
 
-/// Full-screen Now Playing cover. Launched from a tap on the
-/// `MiniPlayer` overlay. Hosts a Player-Theme gradient background,
-/// large artwork, scrub bar, and 5-button transport row. Tap on the
-/// dismiss arrow to slide down (calls `dismiss()`).
+/// Full-screen Now Playing cover with MeloPlayer styling.
 @MainActor
 struct NowPlayingView: View {
 
@@ -20,18 +17,33 @@ struct NowPlayingView: View {
         ZStack {
             palette.linearBackground.ignoresSafeArea()
 
-            VStack(spacing: Spacing.xl) {
+            VStack(spacing: 0) {
                 dismissChrome(palette: palette)
-                Spacer(minLength: Spacing.l)
+
+                Spacer(minLength: Spacing.xl)
+
                 artworkCard(palette: palette)
-                Spacer(minLength: Spacing.l)
+
+                Spacer(minLength: Spacing.xl)
+
                 titleBlock(palette: palette)
-                ScrubBar()
-                TransportRow()
+
                 Spacer(minLength: Spacing.l)
+
+                ScrubBar()
+                    .padding(.horizontal, Spacing.l)
+
+                Spacer(minLength: Spacing.l)
+
+                TransportRow()
+                    .padding(.horizontal, Spacing.l)
+
+                Spacer(minLength: Spacing.xl)
+
+                bottomActionBar(palette: palette)
+                    .padding(.horizontal, Spacing.l)
+                    .padding(.bottom, Spacing.xl)
             }
-            .padding(.horizontal, Spacing.l)
-            .padding(.vertical, Spacing.xl)
         }
         .preferredColorScheme(.dark)
         .sheet(isPresented: $presentingSleepSheet) {
@@ -81,15 +93,17 @@ struct NowPlayingView: View {
                     .monospacedDigit()
             }
         }
+        .padding(.horizontal, Spacing.l)
+        .padding(.top, Spacing.xl)
     }
 
     // MARK: - Artwork
 
     private func artworkCard(palette: PlayerThemePalette) -> some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(palette.railBackground)
-                .shadow(color: .black.opacity(0.50), radius: 16, x: 0, y: 8)
+                .shadow(color: .black.opacity(0.50), radius: 24, x: 0, y: 12)
             Image(systemName: "music.note")
                 .font(.system(size: 96, weight: .thin))
                 .foregroundStyle(palette.secondaryText)
@@ -101,26 +115,61 @@ struct NowPlayingView: View {
     // MARK: - Title block
 
     private func titleBlock(palette: PlayerThemePalette) -> some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 6) {
             Text(engine.state.currentTitle)
-                .font(Typography.title2)
+                .font(Typography.title1)
                 .foregroundStyle(palette.primaryText)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
             Text(engine.state.currentArtist)
-                .font(Typography.subhead)
+                .font(Typography.title3)
                 .foregroundStyle(palette.secondaryText)
                 .multilineTextAlignment(.center)
                 .lineLimit(1)
         }
+        .padding(.horizontal, Spacing.l)
+    }
+
+    // MARK: - Bottom action bar
+
+    private func bottomActionBar(palette: PlayerThemePalette) -> some View {
+        HStack(spacing: Spacing.xl) {
+            Button { } label: {
+                Image(systemName: "heart")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(palette.primaryText)
+            }
+            .buttonStyle(.plain)
+
+            Button { } label: {
+                Image(systemName: "text.alignleft")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(palette.primaryText)
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            Button { } label: {
+                Image(systemName: "speaker.wave.2")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(palette.primaryText)
+            }
+            .buttonStyle(.plain)
+
+            Button { } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(palette.primaryText)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, Spacing.xl)
     }
 }
 
 // MARK: - SleepTimerChip
 
-/// Pill-shaped button in the Now Playing top chrome. Renders the moon
-/// SF Symbol plus an optional countdown string. Tapping opens the
-/// `SleepTimerSheet`. When the timer is off, only the icon shows.
 @MainActor
 private struct SleepTimerChip: View {
 
@@ -149,7 +198,6 @@ private struct SleepTimerChip: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isActive ? "Sleep timer — \(format(secondsRemaining)) remaining" : "Set sleep timer")
-        .accessibilityHint("Opens the sleep timer picker")
     }
 
     private func format(_ seconds: Int) -> String {
@@ -161,11 +209,6 @@ private struct SleepTimerChip: View {
 
 // MARK: - LyricsChip
 
-/// Pill-shaped button in the Now Playing top chrome. Surfaces the
-/// synced-lyrics sheet when tapped. Companion to `SleepTimerChip`.
-/// Unlike the sleep chip we don't track per-tap state here — the
-/// sheet itself reads back whether lines exist and shows an empty
-/// state if the current song has no `.lrc` file.
 @MainActor
 private struct LyricsChip: View {
 
@@ -185,14 +228,5 @@ private struct LyricsChip: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Lyrics")
-        .accessibilityHint("Opens the synced lyrics viewer")
     }
-}
-
-#Preview {
-    NowPlayingView()
-        .environment(AudioEngine())
-        .environment(PlayerThemeManager())
-        .environment(SleepTimer())
-        .preferredColorScheme(.dark)
 }

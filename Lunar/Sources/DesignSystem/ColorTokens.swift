@@ -7,24 +7,26 @@ import SwiftUI
 /// Now Playing screen is showing.
 enum ColorTokens {
 
-    // MARK: — App-wide accent
+    // MARK: — App-wide accent (MeloPlayer lime/yellow-green)
 
-    /// Primary accent (Dark UI / iOS settings tint).
-    /// Locked decision: **Purple** (default when no theme override applies).
-    static let appAccent: Color = .purple
+    /// Primary accent for the dark UI.
+    static let appAccent: Color = Color(red: 0.78, green: 1.00, blue: 0.20)
 
     // MARK: — Surfaces
 
     static let canvas:   Color = .black
-    static let surface:  Color = Color(white: 0.12)
-    static let elevated: Color = Color(white: 0.18)
+    static let surface:  Color = Color(white: 0.10)
+    static let elevated: Color = Color(white: 0.16)
     static let hairline: Color = Color.white.opacity(0.08)
+
+    /// Floating tab bar / mini-player glass background.
+    static let glass: Color = Color(white: 0.12).opacity(0.95)
 
     // MARK: — Text
 
     static let textPrimary:   Color = .white
-    static let textSecondary: Color = Color(white: 0.66)
-    static let textTertiary:  Color = Color(white: 0.45)
+    static let textSecondary: Color = Color(white: 0.62)
+    static let textTertiary:  Color = Color(white: 0.40)
 
     // MARK: — Semantic
 
@@ -32,7 +34,7 @@ enum ColorTokens {
     static let warning:     Color = Color(red: 1.0,  green: 0.74, blue: 0.0)
     static let success:     Color = Color(red: 0.20, green: 0.84, blue: 0.40)
 
-    // MARK: — Cyber Neon (default Player Theme)
+    // MARK: — Cyber Neon (legacy Player Theme colors, kept for compatibility)
 
     static let cyberNeonPink: Color = Color(red: 1.00, green: 0.42, blue: 0.74)
     static let cyberNeonCyan: Color = Color(red: 0.27, green: 0.92, blue: 1.00)

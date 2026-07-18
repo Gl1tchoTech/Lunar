@@ -1,8 +1,6 @@
 import SwiftUI
 
-/// Slider for the Now Playing screen. Bidirectionally bound to
-/// `AudioEngine.state.currentTime`. Sliding seeks into the song; release
-/// commits the seek.
+/// Slider for the Now Playing screen.
 struct ScrubBar: View {
 
     @Environment(AudioEngine.self) private var engine
@@ -15,7 +13,7 @@ struct ScrubBar: View {
         let palette = themeManager.palette
         let duration = max(engine.state.duration, 0.001)
         let display = isDragging ? dragValue : engine.state.currentTime
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             Slider(
                 value: Binding(
                     get: { display },
@@ -29,14 +27,13 @@ struct ScrubBar: View {
                     if !editing {
                         isDragging = false
                         let t = min(duration, max(0, dragValue))
-                        // `engine.send(.seek(t))` already updates `state.currentTime`
-                        // inside the engine — no direct write needed here.
                         Task { await engine.send(.seek(t)) }
                     }
                 }
             )
             .tint(palette.progressTint)
             .background(palette.progressTrack)
+            .clipShape(Capsule())
 
             HStack {
                 Text(formatTime(display))

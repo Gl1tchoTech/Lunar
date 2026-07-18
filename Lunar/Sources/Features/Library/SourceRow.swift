@@ -1,9 +1,6 @@
 import SwiftUI
 
-/// Row representing a `Source` (Local Files / Other Apps) in the
-/// Library Source tab.
-///
-/// Layout: yellow folder icon (40pt square) · title · `N songs | duration`.
+/// Row representing a Source in the Library Source tab.
 @MainActor
 struct SourceRow: View {
 
@@ -14,16 +11,18 @@ struct SourceRow: View {
     var body: some View {
         HStack(spacing: Spacing.m) {
             ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(ColorTokens.warning)
-                    .frame(width: 40, height: 40)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(ColorTokens.warning.opacity(0.85))
+                    .frame(width: 48, height: 48)
                 Image(systemName: "folder.fill")
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(.black)
             }
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(Typography.body)
+                    .fontWeight(.semibold)
                     .foregroundStyle(ColorTokens.textPrimary)
                     .lineLimit(1)
                 Text("\(songCount) song\(songCount == 1 ? "" : "s") | \(formatTotal(totalDuration))")
@@ -31,9 +30,15 @@ struct SourceRow: View {
                     .foregroundStyle(ColorTokens.textSecondary)
                     .monospacedDigit()
             }
+
             Spacer(minLength: Spacing.s)
         }
-        .padding(.vertical, Spacing.xs)
+        .padding(.horizontal, Spacing.m)
+        .padding(.vertical, Spacing.s)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(ColorTokens.surface)
+        )
         .contentShape(Rectangle())
     }
 

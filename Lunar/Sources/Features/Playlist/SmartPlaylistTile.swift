@@ -1,11 +1,6 @@
 import SwiftUI
 
-/// One of the two smart-playlist tiles at the top of the **Playlist**
-/// tab. Mirrors the reference design: full-width rounded card,
-/// gradient background, white SF Symbol centered, title + count subtitle.
-///
-/// Tapping the tile pushes `PlaylistDetailView` configured for the
-/// matching smart playlist.
+/// Smart-playlist tile with MeloPlayer styling.
 @MainActor
 struct SmartPlaylistTile: View {
 
@@ -30,16 +25,11 @@ struct SmartPlaylistTile: View {
             }
         }
 
-        /// Each tile uses a distinct pair so the user can read the
-        /// smart-playlist context at a glance: warm-pink for Favorites
-        /// (matches the heart hero used by `PlaylistDetailView` when
-        /// it sees a playlist named "My Favorites"), then cool→warm
-        /// gradients for Most Played / Recently Played.
         var gradient: [Color] {
             switch self {
-            case .favorites:       [.red, .pink]
-            case .mostPlayed:      [.blue, .teal]
-            case .recentlyPlayed:  [.teal, .green]
+            case .favorites:       [Color(red: 1.00, green: 0.30, blue: 0.30), Color(red: 1.00, green: 0.50, blue: 0.50)]
+            case .mostPlayed:      [Color(red: 0.20, green: 0.60, blue: 1.00), Color(red: 0.40, green: 0.80, blue: 1.00)]
+            case .recentlyPlayed:  [Color(red: 0.20, green: 0.80, blue: 0.40), Color(red: 0.40, green: 1.00, blue: 0.60)]
             }
         }
     }
@@ -49,11 +39,6 @@ struct SmartPlaylistTile: View {
     let totalDuration: TimeInterval
     let action: () -> Void
 
-    /// Debounce flag — prevents a double-tap from enqueueing two
-    /// `NavigationStack` pushes for the same destination. Springs
-    /// back enabled after a short delay. Without this, the tile can
-    /// be pushed twice rapidly when the user double-taps, which
-    /// `NavigationStack` handles oddly (back-twice to dismiss).
     @State private var didTap: Bool = false
 
     var body: some View {
@@ -86,6 +71,7 @@ struct SmartPlaylistTile: View {
                 VStack(spacing: 2) {
                     Text(kind.title)
                         .font(Typography.title2)
+                        .fontWeight(.bold)
                         .foregroundStyle(ColorTokens.textPrimary)
                     Text("\(songCount) song\(songCount == 1 ? "" : "s") | \(formatTotal(totalDuration))")
                         .font(Typography.subhead)
@@ -95,8 +81,10 @@ struct SmartPlaylistTile: View {
                 .padding(.bottom, Spacing.l)
             }
             .frame(maxWidth: .infinity)
-            .background(ColorTokens.canvas)
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(ColorTokens.surface)
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .stroke(ColorTokens.hairline, lineWidth: 1)

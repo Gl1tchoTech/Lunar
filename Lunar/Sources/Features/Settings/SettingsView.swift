@@ -1,19 +1,6 @@
 import SwiftUI
 
-/// Settings tab. Row-driven nav.
-///
-/// **Tier 4** (current pass):
-///   • Equalizer, Playback Setting, About — all real destinations.
-///   • Language stub row was removed — iOS follows the device locale
-///     automatically and Lunar ships en-only for now; no per-app
-///     override is exposed.
-///
-/// **Still stubbed (deliberately — user-deferred work):** Feedback,
-/// Rate Us, Privacy Policy. Each opens a `StubPage` placeholder.
-///
-/// **Sleep Timer** uses a Button + sheet pattern so the same
-/// `SleepTimerSheet` powers both this row and the moon chip in
-/// Now Playing.
+/// Settings tab with MeloPlayer-style grouped rounded cards.
 @MainActor
 struct SettingsView: View {
 
@@ -23,39 +10,47 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    row("Player Style",       systemImage: "tshirt",       to: PlayerStyleView())
-                    row("App Theme",          systemImage: "paintpalette", to: AppThemeView())
-                    sleepTimerRow
-                    row("Equalizer",          systemImage: "slider.vertical.3", to: EqualizerView())
-                    row("Playback Setting",   systemImage: "gear",         to: PlaybackSettingsView())
-                }
+            ScrollView {
+                VStack(alignment: .leading, spacing: Spacing.l) {
+                    header
 
-                Section {
-                    row("About", systemImage: "info.circle", to: AboutView())
-                }
+                    settingsGroup(title: "Appearance") {
+                        row("Player Style", systemImage: "tshirt", to: PlayerStyleView())
+                        row("App Theme", systemImage: "paintpalette", to: AppThemeView())
+                    }
 
-                Section {
-                    row("Feedback",     systemImage: "envelope",    to: StubPage(
-                        title: "Feedback",
-                        message: "Reach the dev team directly. Coming soon.",
-                        systemImage: "envelope"
-                    ))
-                    row("Rate Us",      systemImage: "hand.thumbsup", to: StubPage(
-                        title: "Rate Us",
-                        message: "If Lunar makes your day a little better, we'd love a review.",
-                        systemImage: "hand.thumbsup"
-                    ))
-                    row("Privacy Policy", systemImage: "lock.shield", to: StubPage(
-                        title: "Privacy Policy",
-                        message: "Lunar is local-first. This page will lay out the full policy.",
-                        systemImage: "lock.shield"
-                    ))
+                    settingsGroup(title: "Playback") {
+                        sleepTimerRow
+                        row("Equalizer", systemImage: "slider.vertical.3", to: EqualizerView())
+                        row("Playback Setting", systemImage: "gear", to: PlaybackSettingsView())
+                    }
+
+                    settingsGroup(title: "About") {
+                        row("About", systemImage: "info.circle", to: AboutView())
+                    }
+
+                    settingsGroup(title: "More") {
+                        row("Feedback", systemImage: "envelope", to: StubPage(
+                            title: "Feedback",
+                            message: "Reach the dev team directly. Coming soon.",
+                            systemImage: "envelope"
+                        ))
+                        row("Rate Us", systemImage: "hand.thumbsup", to: StubPage(
+                            title: "Rate Us",
+                            message: "If Lunar makes your day a little better, we'd love a review.",
+                            systemImage: "hand.thumbsup"
+                        ))
+                        row("Privacy Policy", systemImage: "lock.shield", to: StubPage(
+                            title: "Privacy Policy",
+                            message: "Lunar is local-first. This page will lay out the full policy.",
+                            systemImage: "lock.shield"
+                        ))
+                    }
                 }
+                .padding(.horizontal, Spacing.l)
+                .padding(.top, Spacing.s)
+                .padding(.bottom, 140)
             }
-            .listStyle(.insetGrouped)
-            .scrollContentBackground(.hidden)
             .background(ColorTokens.canvas)
             .navigationTitle("Settings")
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -65,7 +60,32 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Row helpers
+    private var header: some View {
+        HStack {
+            Text("Settings")
+                .font(Typography.display)
+                .foregroundStyle(ColorTokens.textPrimary)
+            Spacer()
+        }
+    }
+
+    private func settingsGroup<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            Text(title)
+                .font(Typography.title3)
+                .fontWeight(.bold)
+                .foregroundStyle(ColorTokens.textPrimary)
+                .padding(.horizontal, Spacing.xs)
+
+            VStack(spacing: 0) {
+                content()
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(ColorTokens.surface)
+            )
+        }
+    }
 
     private func row<Destination: View>(
         _ title: String,
@@ -76,28 +96,46 @@ struct SettingsView: View {
             destination
                 .background(ColorTokens.canvas)
         } label: {
-            Label(title, systemImage: systemImage)
+            HStack(spacing: Spacing.m) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(ColorTokens.appAccent)
+                    .frame(width: 28, height: 28)
+                Text(title)
+                    .font(Typography.body)
+                    .foregroundStyle(ColorTokens.textPrimary)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(ColorTokens.textTertiary)
+            }
+            .padding(.horizontal, Spacing.m)
+            .padding(.vertical, Spacing.s)
         }
     }
 
-    /// Sleep Timer uses a Button + sheet (not a NavigationLink) so the
-    /// same `SleepTimerSheet` powers both this row and the moon chip
-    /// in Now Playing. Trailing value shows the current duration.
     private var sleepTimerRow: some View {
         Button {
             presentingSleepSheet = true
         } label: {
-            HStack {
-                Label("Sleep Timer", systemImage: "moon")
+            HStack(spacing: Spacing.m) {
+                Image(systemName: "moon")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(ColorTokens.appAccent)
+                    .frame(width: 28, height: 28)
+                Text("Sleep Timer")
+                    .font(Typography.body)
                     .foregroundStyle(ColorTokens.textPrimary)
                 Spacer()
                 Text(sleepTimerTrailingLabel)
                     .font(Typography.subhead)
                     .foregroundStyle(ColorTokens.textSecondary)
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(ColorTokens.textTertiary)
             }
+            .padding(.horizontal, Spacing.m)
+            .padding(.vertical, Spacing.s)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -107,15 +145,6 @@ struct SettingsView: View {
         if sleepTimer.durationMinutes == 0 { return "Off" }
         return "\(sleepTimer.durationMinutes) min"
     }
-
-    // MARK: - Stubbed destination views
-    //
-    // Player Style, App Theme, Playback Setting, Equalizer, About —
-    // all real destinations, each living in its own file under
-    // `Sources/Features/Settings/` (or `Sources/Settings/`).
-    //
-    // Feedback, Rate Us, Privacy Policy remain `StubPage` placeholders
-    // by explicit user deferral.
 }
 
 // MARK: - StubPage
@@ -135,12 +164,4 @@ struct StubPage: View {
             }
         )
     }
-}
-
-#Preview {
-    SettingsView()
-        .environment(AppThemeSettings())
-        .environment(SleepTimer())
-        .environment(PlaybackSettings())
-        .preferredColorScheme(.dark)
 }

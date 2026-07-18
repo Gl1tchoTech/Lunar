@@ -1,9 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Library — Artists tab. Lists every Artist entity in the library.
-/// Tapping a row pushes `ArtistDetailView` so the user can see the
-/// artist's albums + songs.
+/// Library — Artists tab.
 @MainActor
 struct ArtistsView: View {
 
@@ -12,7 +10,6 @@ struct ArtistsView: View {
 
     var body: some View {
         Group {
-            let header = "Artist name (\(artists.count))"
             if artists.isEmpty {
                 EmptyState(
                     title: "No artists yet",
@@ -23,39 +20,33 @@ struct ArtistsView: View {
                     }
                 )
             } else {
-                artistsList(header: header)
+                artistsList
             }
         }
         .background(ColorTokens.canvas)
     }
 
-    private func artistsList(header: String) -> some View {
-        List {
-            Section {
-                sortChip(header: header)
-                    .listRowBackground(ColorTokens.canvas)
-            }
-            Section {
+    private var artistsList: some View {
+        ScrollView {
+            VStack(spacing: Spacing.m) {
+                HStack {
+                    Text("\(artists.count) artist\(artists.count == 1 ? "" : "s")")
+                        .font(Typography.subhead)
+                        .foregroundStyle(ColorTokens.textSecondary)
+                    Spacer()
+                }
+                .padding(.horizontal, Spacing.l)
+
                 ForEach(artists) { artist in
                     NavigationLink(value: artist) {
                         ArtistRow(artist: artist)
                     }
-                    .listRowBackground(ColorTokens.canvas)
+                    .buttonStyle(.plain)
                 }
+                .padding(.horizontal, Spacing.l)
             }
+            .padding(.top, Spacing.s)
+            .padding(.bottom, 140)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-    }
-
-    private func sortChip(header: String) -> some View {
-        HStack(spacing: Spacing.xs) {
-            Image(systemName: "arrow.up.arrow.down")
-            Text(header)
-                .foregroundStyle(ColorTokens.textSecondary)
-        }
-        .font(Typography.subhead)
-        .foregroundStyle(ColorTokens.textPrimary)
-        .padding(.vertical, Spacing.s)
     }
 }

@@ -2,25 +2,6 @@ import SwiftUI
 import SwiftData
 
 /// Library tab — Songs / Artists / Albums / Source.
-///
-/// Step 3 wired the **Songs** tab fully (sort menu, action row, song
-/// rows, context menu, empty state). The other three tabs render as
-/// minimal placeholders until their dedicated steps (see plan).
-///
-/// **Tier 5** upgrades the Songs tab:
-///
-/// - **Search** — `.searchable` with a 250 ms debounce via
-///   `.task(id: searchText)`. The actual filter lives in
-///   `SongsListView` (which owns its bound `@Query`) so a sort change
-///   re-binds cleanly without fighting iOS 17 SwiftData's
-///   "can't reassign `_songs`" trap.
-/// - **Song Info** — long-press (`contextMenu`) or single-tap on a row
-///   sets `songInfoTarget`; `.sheet(item:)` presents `SongInfoSheet`.
-///   Using `.sheet(item: $target)` instead of `isPresented` + parallel
-///   song id avoids the typical two-state desync.
-///
-/// The current tab, sort key, and search copy live here so other tabs
-/// don't accidentally read the sort or search bar by accident.
 @MainActor
 struct LibraryView: View {
 
@@ -34,28 +15,10 @@ struct LibraryView: View {
     @State private var selectedTab: LibraryListTab = .songs
     @State private var presentingNowPlaying = false
 
-    // Tier 5 — search bar (debounced) + Song Info sheet hosting.
-
-    /// Live search text. Drives `.searchable` directly so the search
-    /// bar feels instant; `debouncedSearchText` follows it 250 ms
-    /// later so we don't churn the @Query on every keystroke.
     @State private var searchText: String = ""
-
-    /// Debounced (Tier 5 — 250 ms via `.task(id:)`) copy. The
-    /// `SongsListView` filters against this, not `searchText`.
     @State private var debouncedSearchText: String = ""
-
-    /// `Song` is `Identifiable` via SwiftData's `@Model` →
-    /// `PersistentModel` conformance. A single `@State` here is enough
-    /// — `.sheet(item: $songInfoTarget)` presents when non-nil + the
-    /// sheet's `dismiss()` clears it. **(Replaces the old `.isPresented
-    /// + selectedSong` double state that used to drift.)**
     @State private var songInfoTarget: Song?
 
-    /// Parallel @Query used purely for counts (SortMenu shows
-    /// "N songs"). Render order lives in `SongsListView` so the
-    /// sort-bound SortDescriptor can rebind its inner @Query without
-    /// mutating this one.
     @Query private var allSongs: [Song]
 
     enum LibraryListTab: String, CaseIterable, Identifiable {
@@ -74,8 +37,8 @@ struct LibraryView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                header
                 tabStrip
-                Divider().background(ColorTokens.hairline)
                 content
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -87,10 +50,6 @@ struct LibraryView: View {
                 prompt: "Songs or artists"
             )
             .task(id: searchText) {
-                // 250 ms debounce. `.task(id:)` cancels the prior task
-                // on every change so the next keystroke simply starts a
-                // new timer — no Combine plumbing required, and no
-                // manual cancel logic.
                 try? await Task.sleep(for: .milliseconds(250))
                 if Task.isCancelled { return }
                 debouncedSearchText = searchText
@@ -98,7 +57,6 @@ struct LibraryView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: Spacing.m) {
-                        // PRO badge removed per locked decision (no paywall)
                         Image(systemName: "plus")
                             .accessibilityLabel("Add songs")
                         Image(systemName: "ellipsis")
@@ -123,9 +81,6 @@ struct LibraryView: View {
                 NowPlayingView()
                     .environment(audioEngine)
             }
-            .safeAreaInset(edge: .bottom) {
-                MiniPlayer(isPresented: $presentingNowPlaying)
-            }
             .navigationDestination(for: Artist.self) { artist in
                 ArtistDetailView(artist: artist)
             }
@@ -140,33 +95,46 @@ struct LibraryView: View {
         }
     }
 
+    // MARK: - Header
+
+    private var header: some View {
+        HStack {
+            Text("Library")
+                .font(Typography.display)
+                .foregroundStyle(ColorTokens.textPrimary)
+            Spacer()
+        }
+        .padding(.horizontal, Spacing.l)
+        .padding(.top, Spacing.s)
+    }
+
     // MARK: - Tab strip
 
     private var tabStrip: some View {
-        HStack(spacing: Spacing.l) {
+        HStack(spacing: Spacing.s) {
             ForEach(LibraryListTab.allCases) { tab in
                 Button {
                     selectedTab = tab
                 } label: {
-                    VStack(spacing: 4) {
-                        Text(tab.label)
-                            .font(Typography.subhead)
-                            .foregroundStyle(
-                                tab == selectedTab
-                                    ? ColorTokens.textPrimary
-                                    : ColorTokens.textSecondary
-                            )
-                        Rectangle()
-                            .fill(tab == selectedTab ? ColorTokens.appAccent : .clear)
-                            .frame(height: 2)
-                    }
+                    Text(tab.label)
+                        .font(Typography.subhead)
+                        .fontWeight(tab == selectedTab ? .bold : .medium)
+                        .foregroundStyle(
+                            tab == selectedTab ? ColorTokens.appAccent : ColorTokens.textSecondary
+                        )
+                        .padding(.horizontal, Spacing.m)
+                        .padding(.vertical, Spacing.xs)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(tab == selectedTab ? ColorTokens.appAccent.opacity(0.15) : Color.clear)
+                        )
                 }
                 .buttonStyle(.plain)
             }
             Spacer()
         }
         .padding(.horizontal, Spacing.l)
-        .padding(.top, Spacing.s)
+        .padding(.vertical, Spacing.s)
     }
 
     // MARK: - Content
@@ -181,9 +149,6 @@ struct LibraryView: View {
         }
     }
 
-    /// Songs tab body is now a `SongsListView` — owns the sort-bound
-    /// `@Query` and the filter. LibraryView just supplies the sort
-    /// descriptor + the live debounced search text + action closures.
     private var songsTab: some View {
         SongsListView(
             sortDescriptor: Song.defaultSort(for: sortKey, direction: direction),
@@ -217,28 +182,11 @@ struct LibraryView: View {
     private func toggleFavorite(_ song: Song) {
         libraryService?.toggleFavorite(song)
     }
-
-    private func sendLoad(for song: Song) {
-        guard
-            let url = MusicLibrary.absoluteURL(forFileName: song.fileName)
-        else { return }
-        let request = PlaybackRequest(
-            songID: song.persistentModelID,
-            title: song.title,
-            artist: song.artist,
-            fileURL: url,
-            duration: song.duration
-        )
-        Task { await audioEngine.send(.load(request)) }
-    }
 }
 
 // MARK: - Sort descriptor factory
 
 extension Song {
-    /// Build a `SortDescriptor<Song>` for a given key + direction.
-    /// Used by `SongsListView` both at first render and on user sort
-    /// change (a new descriptor → `init` re-binds the inner @Query).
     static func defaultSort(
         for key: LibrarySortKey,
         direction: SortDirection
@@ -253,15 +201,4 @@ extension Song {
         case .mostPlayed:     return SortDescriptor(\.playCount, order: order)
         }
     }
-}
-
-#Preview {
-    let container = try! ModelContainer(
-        for: LunarSchema.schema,
-        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-    )
-    return LibraryView()
-        .environment(AudioEngine())
-        .modelContainer(container)
-        .preferredColorScheme(.dark)
 }

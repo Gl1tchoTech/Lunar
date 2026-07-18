@@ -1,8 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Library — Albums tab. Lists every Album entity in the library.
-/// Tapping a row pushes `AlbumDetailView` for the album's song list.
+/// Library — Albums tab.
 @MainActor
 struct AlbumsView: View {
 
@@ -28,32 +27,26 @@ struct AlbumsView: View {
     }
 
     private var albumsList: some View {
-        List {
-            Section {
-                sortChip
-                    .listRowBackground(ColorTokens.canvas)
-            }
-            Section {
+        ScrollView {
+            VStack(spacing: Spacing.m) {
+                HStack {
+                    Text("\(albums.count) album\(albums.count == 1 ? "" : "s")")
+                        .font(Typography.subhead)
+                        .foregroundStyle(ColorTokens.textSecondary)
+                    Spacer()
+                }
+                .padding(.horizontal, Spacing.l)
+
                 ForEach(albums) { album in
                     NavigationLink(value: album) {
                         AlbumRow(album: album)
                     }
-                    .listRowBackground(ColorTokens.canvas)
+                    .buttonStyle(.plain)
                 }
+                .padding(.horizontal, Spacing.l)
             }
+            .padding(.top, Spacing.s)
+            .padding(.bottom, 140)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-    }
-
-    private var sortChip: some View {
-        HStack(spacing: Spacing.xs) {
-            Image(systemName: "arrow.up.arrow.down")
-            Text("Album name (\(albums.count))")
-                .foregroundStyle(ColorTokens.textSecondary)
-        }
-        .font(Typography.subhead)
-        .foregroundStyle(ColorTokens.textPrimary)
-        .padding(.vertical, Spacing.s)
     }
 }

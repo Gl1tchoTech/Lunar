@@ -1,14 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Playlist tab. Layout mirrors reference:
-/// 1. Three smart-playlist tiles in a horizontally-scrolling row
-///    (`My Favorites` · `Most Played` · `Recently Played`)
-/// 2. `↑↓ My Local Playlist (N)` section header
-/// 3. Big lime "+" Create New row
-/// 4. List of user playlists
-///
-/// All pushes go to `PlaylistDetailView` with the right hero style.
+/// Playlist tab with MeloPlayer styling.
 @MainActor
 struct PlaylistView: View {
 
@@ -16,22 +9,13 @@ struct PlaylistView: View {
     @Environment(AudioEngine.self) private var audioEngine
 
     @State private var libraryService: LibraryService?
-    @State private var presentingNowPlaying = false
     @State private var showingCreateDialog = false
     @State private var newPlaylistName = ""
 
-    /// Path-bound `NavigationStack` so the smart-playlist tiles can
-    /// `append(.mostPlayed)` and `append(.recentlyPlayed)` without
-    /// having to wrap the result in `NavigationLink`.
     @State private var navPath: [PlaylistNavEnum] = []
 
-    // Smart-tile state, loaded once via `.task` instead of inside
-    // `body` (which would re-run a synchronous SwiftData fetch every
-    // render and stutter the UI).
     @State private var mostPlayed: [Song] = []
     @State private var recentlyPlayed: [Song] = []
-    /// Tier 5 — `My Favorites` smart-playlist state. Source is
-    /// `LibraryService.favoriteSongs()` (predicate on `Song.isFavorite`).
     @State private var favorites: [Song] = []
 
     @Query(sort: [SortDescriptor(\Playlist.dateCreated, order: .forward)])
@@ -41,13 +25,14 @@ struct PlaylistView: View {
         NavigationStack(path: $navPath) {
             ScrollView {
                 VStack(alignment: .leading, spacing: Spacing.l) {
+                    header
                     smartTilesRow
                     localPlaylistHeader
                     CreateNewRow {
                         showingCreateDialog = true
                     }
                     if !playlists.isEmpty {
-                        LazyVStack(spacing: 0) {
+                        LazyVStack(spacing: Spacing.m) {
                             ForEach(playlists) { playlist in
                                 NavigationLink(value: PlaylistNavEnum.regular(playlist)) {
                                     LocalPlaylistRow(playlist: playlist)
@@ -55,14 +40,13 @@ struct PlaylistView: View {
                                 .buttonStyle(.plain)
                             }
                         }
-                        .background(ColorTokens.canvas)
                     } else {
                         emptyHint
                     }
                 }
                 .padding(.horizontal, Spacing.l)
                 .padding(.top, Spacing.s)
-                .padding(.bottom, 96) // leave room for MiniPlayer
+                .padding(.bottom, 140)
             }
             .background(ColorTokens.canvas)
             .navigationTitle("Playlist")
@@ -99,20 +83,10 @@ struct PlaylistView: View {
                     newPlaylistName = ""
                 }
             }
-            .fullScreenCover(isPresented: $presentingNowPlaying) {
-                NowPlayingView()
-                    .environment(audioEngine)
-            }
-            .safeAreaInset(edge: .bottom) {
-                MiniPlayer(isPresented: $presentingNowPlaying)
-            }
             .task {
                 if libraryService == nil {
                     libraryService = LibraryService(context: modelContext)
                 }
-                // Hydrate smart-tile state ONCE. Subsequent renders
-                // read from `mostPlayed` / `recentlyPlayed` instead of
-                // re-running a SwiftData fetch every time `body` runs.
                 mostPlayed = libraryService?.mostPlayedSongs() ?? []
                 recentlyPlayed = libraryService?.recentlyPlayedSongs() ?? []
                 favorites = libraryService?.favoriteSongs() ?? []
@@ -125,14 +99,15 @@ struct PlaylistView: View {
         case smart(SmartPlaylistRoute)
     }
 
-    // MARK: - Smart tiles
+    private var header: some View {
+        HStack {
+            Text("Playlist")
+                .font(Typography.display)
+                .foregroundStyle(ColorTokens.textPrimary)
+            Spacer()
+        }
+    }
 
-    /// Tier 5 — three smart tiles now (`My Favorites` joined the
-    /// existing pair). Wrapped in a horizontal scroll so the layout
-    /// doesn't get cramped on smaller iPhone widths (three ≥ 140 pt
-    /// tiles with 16 pt gaps is ≈ 452 pt — wider than an iPhone 15
-    /// portrait). Each tile is `.frame(width: 170)` so the row stays
-    /// predictable regardless of `maxWidth: .infinity` on the tile.
     private var smartTilesRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: Spacing.m) {
@@ -168,16 +143,14 @@ struct PlaylistView: View {
         }
     }
 
-    // MARK: - Local playlist header + rows
-
     private var localPlaylistHeader: some View {
         HStack(spacing: Spacing.xs) {
-            Image(systemName: "arrow.up.arrow.down")
             Text("My Local Playlist (\(playlists.count))")
-                .foregroundStyle(ColorTokens.textSecondary)
+                .font(Typography.title3)
+                .fontWeight(.bold)
+                .foregroundStyle(ColorTokens.textPrimary)
+            Spacer()
         }
-        .font(Typography.subhead)
-        .foregroundStyle(ColorTokens.textPrimary)
         .padding(.top, Spacing.m)
     }
 
@@ -192,8 +165,6 @@ struct PlaylistView: View {
         )
         .frame(minHeight: 220)
     }
-
-    // MARK: - Helpers
 
     private func detailSubtitle(for playlist: Playlist) -> String? {
         let songs = playlist.songs
@@ -215,74 +186,5 @@ struct PlaylistView: View {
         let s = total % 60
         if h > 0 { return "\(h):\(String(format: "%02d", m)):\(String(format: "%02d", s))" }
         return "\(m):\(String(format: "%02d", s))"
-    }
-}
-
-// MARK: - SmartPlaylistRoute
-
-/// Navigator-tag wrapper for the smart-playlist hero tiles.
-struct SmartPlaylistRoute: Hashable {
-    let kind: SmartPlaylistTile.Kind
-    let songs: [Song]
-}
-
-// Static factories used from `navPath.append(.smart(.favorites(...)))`.
-// Mirrors the same shape as the SmartPlaylistTile.Kind extension
-// below so `PlaylistNavEnum.smart(_:)` callers don't need to know
-// about the Kind enum.
-extension SmartPlaylistRoute {
-    static func favorites(_ songs: [Song])      -> SmartPlaylistRoute { .init(kind: .favorites, songs: songs) }
-    static func mostPlayed(_ songs: [Song])     -> SmartPlaylistRoute { .init(kind: .mostPlayed, songs: songs) }
-    static func recentlyPlayed(_ songs: [Song]) -> SmartPlaylistRoute { .init(kind: .recentlyPlayed, songs: songs) }
-}
-
-/// Maps a `SmartPlaylistTile.Kind` to a `PlaylistDetailView.HeroStyle`.
-///
-/// `My Favorites` uses the heart hero (matches `PlaylistDetailView`'s
-/// existing `.heart` enum case + `regular`-route branch logic);
-/// `Most Played` and `Recently Played` use their respective gradients.
-extension SmartPlaylistTile.Kind {
-    var favoritesRouteStyle: PlaylistDetailView.HeroStyle {
-        switch self {
-        case .favorites:       .heart
-        case .mostPlayed:      .gradient(colors: Self.mostPlayed.gradient)
-        case .recentlyPlayed:  .gradient(colors: Self.recentlyPlayed.gradient)
-        }
-    }
-
-    var navHashable: SmartPlaylistRoute {
-        // synthesize with empty songs first; the tile callback carries
-        // the songs along — see `pushSmartPlaylist(_:)`.
-        SmartPlaylistRoute(kind: self, songs: [])
-    }
-    static func favorites(_ songs: [Song])      -> SmartPlaylistRoute { .init(kind: .favorites, songs: songs) }
-    static func mostPlayed(_ songs: [Song])     -> SmartPlaylistRoute { .init(kind: .mostPlayed, songs: songs) }
-    static func recentlyPlayed(_ songs: [Song]) -> SmartPlaylistRoute { .init(kind: .recentlyPlayed, songs: songs) }
-}
-
-// MARK: - CreateNewRow
-
-private struct CreateNewRow: View {
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: Spacing.s) {
-                ZStack {
-                    Circle()
-                        .fill(ColorTokens.appAccent)
-                        .frame(width: 48, height: 48)
-                    Image(systemName: "plus")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-                Text("Create New")
-                    .font(Typography.headline)
-                    .foregroundStyle(ColorTokens.appAccent)
-                Spacer()
-            }
-            .padding(.vertical, Spacing.xs)
-        }
-        .buttonStyle(.plain)
     }
 }

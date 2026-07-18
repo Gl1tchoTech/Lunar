@@ -1,17 +1,6 @@
 import SwiftUI
 
-/// Settings ▸ Playback Setting.
-///
-/// Two controls driven by `PlaybackSettings`:
-/// 1. **Crossfade Duration** — slider 0…12 s, snapped to 0.5 s. **0 s**
-///    = direct cut (gapless if the toggle is also on).
-/// 2. **Gapless Playback** — toggle. When ON the next song starts the
-///    moment the current ends (with optional overlap from the slider).
-///    When OFF a brief silence separates songs.
-///
-/// Both values persist to `UserDefaults` and propagate to the live
-/// `AudioEngine` via `PlaybackSettings.onChange` (installed in
-/// `LunarAppCoordinator`).
+/// Settings ▸ Playback Setting with MeloPlayer styling.
 @MainActor
 struct PlaybackSettingsView: View {
 
@@ -19,63 +8,56 @@ struct PlaybackSettingsView: View {
 
     var body: some View {
         @Bindable var bindable = settings
-        Form {
-            Section {
-                CrossfadeSliderRow(
-                    value: $bindable.crossfadeDurationSeconds
-                )
-            } header: {
-                Text("Crossfade")
-            } footer: {
-                Text("How long two songs overlap when the queue advances. Set to 0 to skip the crossfade entirely.")
-                    .font(Typography.caption1)
-                    .foregroundStyle(ColorTokens.textSecondary)
-            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.l) {
+                HStack {
+                    Text("Playback")
+                        .font(Typography.display)
+                        .foregroundStyle(ColorTokens.textPrimary)
+                    Spacer()
+                }
 
-            Section {
-                Toggle("Gapless Playback", isOn: $bindable.gaplessEnabled)
-            } header: {
-                Text("Continuity")
-            } footer: {
-                Text(gaplessFooterText)
-                    .font(Typography.caption1)
-                    .foregroundStyle(ColorTokens.textSecondary)
-            }
+                settingsGroup {
+                    CrossfadeSliderRow(
+                        value: $bindable.crossfadeDurationSeconds
+                    )
+                    .padding(.horizontal, Spacing.m)
+                    .padding(.vertical, Spacing.s)
+                }
 
-            Section {
-                playbackSummaryRow
-            } header: {
-                Text("Current")
+                settingsGroup {
+                    Toggle("Gapless Playback", isOn: $bindable.gaplessEnabled)
+                        .padding(.horizontal, Spacing.m)
+                        .padding(.vertical, Spacing.s)
+                        .tint(ColorTokens.appAccent)
+                }
+
+                settingsGroup {
+                    HStack(spacing: Spacing.m) {
+                        Image(systemName: "speaker.wave.2")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(ColorTokens.appAccent)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Currently")
+                                .font(Typography.caption1)
+                                .foregroundStyle(ColorTokens.textSecondary)
+                            Text(summary)
+                                .font(Typography.headline)
+                                .foregroundStyle(ColorTokens.textPrimary)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, Spacing.m)
+                    .padding(.vertical, Spacing.s)
+                }
             }
+            .padding(.horizontal, Spacing.l)
+            .padding(.top, Spacing.s)
+            .padding(.bottom, 140)
         }
-        .scrollContentBackground(.hidden)
         .background(ColorTokens.canvas)
         .navigationTitle("Playback Setting")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-
-    // MARK: - Captions
-
-    private var gaplessFooterText: String {
-        if settings.gaplessEnabled {
-            return "ON — the next song starts the moment the current ends. Combine with the crossfade slider above to choose the overlap duration."
-        }
-        return "OFF — a brief silence separates songs as the queue advances."
-    }
-
-    private var playbackSummaryRow: some View {
-        HStack {
-            Image(systemName: "speaker.wave.2")
-                .foregroundStyle(ColorTokens.appAccent)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Currently")
-                    .font(Typography.caption1)
-                    .foregroundStyle(ColorTokens.textSecondary)
-                Text(summary)
-                    .font(Typography.headline)
-                    .foregroundStyle(ColorTokens.textPrimary)
-            }
-        }
+        .toolbarColorScheme(.dark, for: .navigationBar)
     }
 
     private var summary: String {
@@ -93,10 +75,6 @@ struct PlaybackSettingsView: View {
 
 // MARK: - CrossfadeSliderRow
 
-/// A label + slider + live numeric readout, all bound to a single
-/// `Double`. Reading the value through the binding keeps the
-/// displayed `seconds` label in sync with the slider drag in real
-/// time.
 private struct CrossfadeSliderRow: View {
 
     @Binding var value: Double
@@ -104,7 +82,7 @@ private struct CrossfadeSliderRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             HStack {
-                Text("Duration")
+                Text("Crossfade Duration")
                     .font(Typography.headline)
                     .foregroundStyle(ColorTokens.textPrimary)
                 Spacer()
@@ -129,10 +107,4 @@ private struct CrossfadeSliderRow: View {
         if value <= 0 { return "Off" }
         return String(format: "%.1f s", value)
     }
-}
-
-#Preview {
-    PlaybackSettingsView()
-        .environment(PlaybackSettings())
-        .preferredColorScheme(.dark)
 }

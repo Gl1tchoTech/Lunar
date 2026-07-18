@@ -1,16 +1,6 @@
 import SwiftUI
 
-/// 5-button transport row: shuffle · prev · play-pause · next · repeat.
-///
-/// Drives `QueueSettings` (the **source of truth** — UserDefaults-backed)
-/// for queue modes, and `AudioEngine` directly for prev/play/next.
-/// Mirroring from `QueueSettings` → `AudioEngine.shuffleMode /
-/// .repeatMode` happens in `LunarAppCoordinator.task` via the
-/// `onChange` callback, so button taps here stay one-line.
-///
-/// **Queue mode glyphs** (always reflect the live `QueueSettings`):
-/// - **shuffle** — `shuffle` (off) → `shuffle.circle.fill` (on, accent-tinted)
-/// - **repeat** — `repeat` (off) → `repeat.circle.fill` (all) → `repeat.1.circle.fill` (one)
+/// 5-button transport row with MeloPlayer styling.
 @MainActor
 struct TransportRow: View {
 
@@ -25,7 +15,9 @@ struct TransportRow: View {
             button(systemImage: "backward.fill", action: { engine.previous() }, palette: palette)
                 .opacity(canGoPrev ? 1 : 0.4)
                 .disabled(!canGoPrev)
+
             playPauseButton(palette: palette)
+
             button(systemImage: "forward.fill", action: { engine.next() }, palette: palette)
                 .opacity(canGoNext ? 1 : 0.4)
                 .disabled(!canGoNext)
@@ -33,8 +25,10 @@ struct TransportRow: View {
         }
         .padding(.vertical, Spacing.m)
         .frame(maxWidth: .infinity)
-        .background(palette.railBackground.opacity(visibleRailOpacity))
-        .clipShape(RoundedRectangle(cornerRadius: Spacing.cardCornerRadius, style: .continuous))
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(palette.railBackground.opacity(visibleRailOpacity))
+        )
     }
 
     private var canGoPrev: Bool {
@@ -53,12 +47,6 @@ struct TransportRow: View {
         }
     }
 
-    // MARK: - Queue mode buttons
-
-    /// Mutates `queueSettings.shuffleMode` directly. `didSet` writes
-    /// to `UserDefaults` and fires `onChange`, which the coordinator
-    /// pipes into `audioEngine.shuffleMode` — so the engine eventually
-    /// follows even though we don't poke it here.
     private func shuffleButton(palette: PlayerThemePalette) -> some View {
         let isOn = queueSettings.shuffleMode == .on
         return Button {
@@ -70,15 +58,8 @@ struct TransportRow: View {
                 .frame(width: 44, height: 44)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(isOn ? "Shuffle on" : "Shuffle off")
-        .accessibilityHint("Toggles shuffling the upcoming queue")
     }
 
-    /// Cycles `queueSettings.repeatMode` (off → all → one → off). The
-    /// cycle is the local helper `nextRepeatMode(_:)` — a pure function
-    /// for clarity + testability; `QueueSettings.cycleRepeatMode()` is
-    /// the same cycle from a different call-site (any future
-    /// programmatic toggles).
     private func repeatButton(palette: PlayerThemePalette) -> some View {
         let mode = queueSettings.repeatMode
         let isActive = mode != .off
@@ -91,27 +72,7 @@ struct TransportRow: View {
                 .frame(width: 44, height: 44)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(repeatAccessibilityLabel(mode))
-        .accessibilityHint("Cycles repeat mode: Off → All → One")
     }
-
-    private func nextRepeatMode(_ current: RepeatMode) -> RepeatMode {
-        switch current {
-        case .off:    .all
-        case .all:    .one
-        case .one:    .off
-        }
-    }
-
-    private func repeatAccessibilityLabel(_ mode: RepeatMode) -> String {
-        switch mode {
-        case .off: "Repeat off"
-        case .all: "Repeat all"
-        case .one: "Repeat one"
-        }
-    }
-
-    // MARK: - Generic buttons
 
     private func button(
         systemImage: String,
@@ -134,11 +95,10 @@ struct TransportRow: View {
             Image(systemName: engine.state.isPlaying ? "pause.fill" : "play.fill")
                 .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(.black)
-                .frame(width: 64, height: 64)
+                .frame(width: 72, height: 72)
                 .background(palette.accent)
                 .clipShape(Circle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(engine.state.isPlaying ? "Pause" : "Play")
     }
 }

@@ -1,8 +1,6 @@
 import SwiftUI
 
-/// Settings — Player Style sheet. Vertical list of the six Player
-/// Themes with a small preview card (gradient + accent color circle +
-/// play button). Tap a card to set `PlayerThemeManager.current`.
+/// Settings — Player Style with MeloPlayer styling.
 @MainActor
 struct PlayerStyleView: View {
 
@@ -10,20 +8,31 @@ struct PlayerStyleView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: Spacing.m) {
-                ForEach(PlayerThemeID.allCases) { id in
-                    ThemePreviewCard(
-                        themeID: id,
-                        isSelected: manager.current == id,
-                        onSelect: { manager.setTheme(id) }
-                    )
+            VStack(alignment: .leading, spacing: Spacing.l) {
+                HStack {
+                    Text("Player Style")
+                        .font(Typography.display)
+                        .foregroundStyle(ColorTokens.textPrimary)
+                    Spacer()
+                }
+
+                VStack(spacing: Spacing.m) {
+                    ForEach(PlayerThemeID.allCases) { id in
+                        ThemePreviewCard(
+                            themeID: id,
+                            isSelected: manager.current == id,
+                            onSelect: { manager.setTheme(id) }
+                        )
+                    }
                 }
             }
-            .padding(Spacing.l)
+            .padding(.horizontal, Spacing.l)
+            .padding(.top, Spacing.s)
+            .padding(.bottom, 140)
         }
         .background(ColorTokens.canvas)
         .navigationTitle("Player Style")
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarColorScheme(.dark, for: .navigationBar)
     }
 }
 
@@ -45,12 +54,11 @@ private struct ThemePreviewCard: View {
                     Spacer()
                     if isSelected {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(palette.accent)
+                            .foregroundStyle(ColorTokens.appAccent)
                             .font(.system(size: 22))
                     }
                 }
 
-                // Tripod preview: gradient + accent button + transport pills
                 ZStack {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(palette.linearBackground)
@@ -80,7 +88,7 @@ private struct ThemePreviewCard: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(
-                        isSelected ? palette.accent : ColorTokens.hairline,
+                        isSelected ? ColorTokens.appAccent : ColorTokens.hairline,
                         lineWidth: isSelected ? 2 : 1
                     )
             )

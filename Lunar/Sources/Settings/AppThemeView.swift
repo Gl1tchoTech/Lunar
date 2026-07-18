@@ -1,13 +1,7 @@
 import SwiftUI
 import Observation
 
-/// Settings — App Theme sheet. Two-row picker:
-/// - System / Light / Dark mode
-/// - Accent color swatches (Purple / Pink / Cyan / Orange / Green / Red)
-///
-/// Theme mode drives `preferredColorScheme`; accent drives the global
-/// tint. The selected mode + accent persist to `UserDefaults` and are
-/// reapplied on next launch via `AppThemeSettings`.
+/// Settings — App Theme with MeloPlayer styling.
 @Observable
 @MainActor
 final class AppThemeSettings {
@@ -28,7 +22,7 @@ final class AppThemeSettings {
     }
 
     enum Accent: String, CaseIterable, Identifiable {
-        case purple, pink, cyan, orange, green, red
+        case purple, pink, cyan, orange, green, red, lime
         var id: String { rawValue }
         var label: String { rawValue.capitalized }
         var color: Color {
@@ -39,6 +33,7 @@ final class AppThemeSettings {
             case .orange: ColorTokens.warning
             case .green:  Color(red: 0.20, green: 0.84, blue: 0.40)
             case .red:    ColorTokens.destructive
+            case .lime:   ColorTokens.appAccent
             }
         }
     }
@@ -52,7 +47,7 @@ final class AppThemeSettings {
 
     init() {
         self.mode = Mode(rawValue: UserDefaults.standard.string(forKey: Self.modeKey) ?? "") ?? .system
-        self.accent = Accent(rawValue: UserDefaults.standard.string(forKey: Self.accentKey) ?? "") ?? .purple
+        self.accent = Accent(rawValue: UserDefaults.standard.string(forKey: Self.accentKey) ?? "") ?? .lime
     }
 }
 
@@ -62,24 +57,58 @@ struct AppThemeView: View {
 
     var body: some View {
         @Bindable var bindable = settings
-        Form {
-            Section("Appearance") {
-                Picker("Theme", selection: $bindable.mode) {
-                    ForEach(AppThemeSettings.Mode.allCases) { mode in
-                        Text(mode.label).tag(mode)
-                    }
+        ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.l) {
+                HStack {
+                    Text("App Theme")
+                        .font(Typography.display)
+                        .foregroundStyle(ColorTokens.textPrimary)
+                    Spacer()
                 }
-                .pickerStyle(.segmented)
-                .preferredColorScheme(settings.mode.colorScheme)
+
+                settingsGroup(title: "Appearance") {
+                    Picker("Theme", selection: $bindable.mode) {
+                        ForEach(AppThemeSettings.Mode.allCases) { mode in
+                            Text(mode.label).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .preferredColorScheme(settings.mode.colorScheme)
+                    .padding(.horizontal, Spacing.m)
+                    .padding(.vertical, Spacing.s)
+                }
+
+                settingsGroup(title: "Accent Color") {
+                    AccentGrid(selection: $bindable.accent)
+                        .padding(.horizontal, Spacing.m)
+                        .padding(.vertical, Spacing.s)
+                }
             }
-            Section("Accent Color") {
-                AccentGrid(selection: $bindable.accent)
-            }
+            .padding(.horizontal, Spacing.l)
+            .padding(.top, Spacing.s)
+            .padding(.bottom, 140)
         }
-        .scrollContentBackground(.hidden)
         .background(ColorTokens.canvas)
         .navigationTitle("App Theme")
-        .navigationBarTitleDisplayMode(.inline)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+    }
+
+    private func settingsGroup<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            Text(title)
+                .font(Typography.title3)
+                .fontWeight(.bold)
+                .foregroundStyle(ColorTokens.textPrimary)
+                .padding(.horizontal, Spacing.xs)
+
+            VStack(spacing: 0) {
+                content()
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(ColorTokens.surface)
+            )
+        }
     }
 }
 

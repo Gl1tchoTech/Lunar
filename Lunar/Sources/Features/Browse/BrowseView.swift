@@ -2,8 +2,6 @@ import SwiftUI
 
 // MARK: — BrowseCategory
 
-/// A single placeholder tile in the Browse grid. The full downloader /
-/// streamer will hydrate these surfaces in a later release.
 struct BrowseCategory: Identifiable, Hashable {
     let title: String
     let icon: String
@@ -13,12 +11,12 @@ struct BrowseCategory: Identifiable, Hashable {
 }
 
 private let categories: [BrowseCategory] = [
-    BrowseCategory(title: "Top Charts",   icon: "chart.bar.fill",            gradient: [.pink,   .purple]),
-    BrowseCategory(title: "Discover",     icon: "sparkles",                  gradient: [.blue,   .cyan ]),
-    BrowseCategory(title: "New Releases", icon: "sparkle",                   gradient: [.orange, .pink ]),
-    BrowseCategory(title: "Genres",       icon: "music.quarternote.3",       gradient: [.green,  .mint ]),
-    BrowseCategory(title: "Trending",     icon: "flame.fill",                gradient: [.red,    .orange]),
-    BrowseCategory(title: "Featured",     icon: "star.fill",                 gradient: [.indigo, .purple]),
+    BrowseCategory(title: "Top Charts",   icon: "chart.bar.fill",      gradient: [.pink,   .purple]),
+    BrowseCategory(title: "Discover",     icon: "sparkles",            gradient: [.blue,   .cyan ]),
+    BrowseCategory(title: "New Releases", icon: "sparkle",             gradient: [.orange, .pink ]),
+    BrowseCategory(title: "Genres",       icon: "music.quarternote.3", gradient: [.green,  .mint ]),
+    BrowseCategory(title: "Trending",     icon: "flame.fill",          gradient: [.red,    .orange]),
+    BrowseCategory(title: "Featured",     icon: "star.fill",           gradient: [.indigo, .purple]),
 ]
 
 // MARK: — BrowseView
@@ -34,19 +32,28 @@ struct BrowseView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVGrid(columns: columns, spacing: Spacing.m) {
-                    ForEach(categories) { category in
-                        categoryCard(category)
+                VStack(alignment: .leading, spacing: Spacing.l) {
+                    HStack {
+                        Text("Browse")
+                            .font(Typography.display)
+                            .foregroundStyle(ColorTokens.textPrimary)
+                        Spacer()
                     }
+
+                    LazyVGrid(columns: columns, spacing: Spacing.m) {
+                        ForEach(categories) { category in
+                            categoryCard(category)
+                        }
+                    }
+
+                    comingSoonFootnote
                 }
                 .padding(Spacing.l)
+                .padding(.bottom, 140)
             }
             .background(ColorTokens.canvas)
             .navigationTitle("Browse")
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .safeAreaInset(edge: .bottom) {
-                comingSoonFootnote
-            }
         }
     }
 
@@ -64,6 +71,7 @@ struct BrowseView: View {
 
                 Text(category.title)
                     .font(Typography.headline)
+                    .fontWeight(.bold)
                     .foregroundStyle(.white)
             }
             .frame(maxWidth: .infinity, minHeight: 140, alignment: .bottomLeading)
@@ -75,7 +83,7 @@ struct BrowseView: View {
                     endPoint: .bottomTrailing
                 )
             )
-            .clipShape(RoundedRectangle(cornerRadius: Spacing.cardCornerRadius))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -83,19 +91,17 @@ struct BrowseView: View {
     private var comingSoonFootnote: some View {
         HStack(alignment: .top, spacing: Spacing.s) {
             Image(systemName: "info.circle")
-                .foregroundStyle(ColorTokens.textSecondary)
+                .foregroundStyle(ColorTokens.appAccent)
             Text("Coming soon — Browse hosts the upcoming song downloader and streamer.")
                 .font(Typography.footnote)
                 .foregroundStyle(ColorTokens.textSecondary)
                 .multilineTextAlignment(.leading)
         }
-        .padding(Spacing.l)
+        .padding(Spacing.m)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.ultraThinMaterial)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(ColorTokens.surface)
+        )
     }
-}
-
-#Preview {
-    BrowseView()
-        .preferredColorScheme(.dark)
 }

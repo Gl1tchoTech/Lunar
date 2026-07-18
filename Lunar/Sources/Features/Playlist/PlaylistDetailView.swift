@@ -1,12 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Detail page for a single playlist. Reused for:
-/// - **Smart playlists** (Most Played, Recently Played) — `heroStyle = .gradient`
-/// - **My Favorites** (predicate rendered at runtime) — `heroStyle = .heart`
-/// - **User-created playlists** — `heroStyle = .icon`
-///
-/// Push from `PlaylistView`. Tapping a song plays it + opens Now Playing.
+/// Detail page for a single playlist.
 @MainActor
 struct PlaylistDetailView: View {
 
@@ -56,39 +51,57 @@ struct PlaylistDetailView: View {
     }
 
     private var playlistList: some View {
-        List {
-            Section {
+        ScrollView {
+            VStack(spacing: Spacing.m) {
                 heroCard
-                    .listRowBackground(ColorTokens.canvas)
-                    .listRowSeparator(.hidden)
-                LibraryActionRow(
-                    totalSongs: songs.count,
-                    onShuffle: { playAll(shuffled: true) },
-                    onPlayAll: { playAll(shuffled: false) }
-                )
-                .listRowBackground(ColorTokens.canvas)
-            }
-            Section {
+
+                HStack(spacing: Spacing.s) {
+                    Spacer()
+                    pillButton(systemImage: "shuffle", label: "Shuffle", action: { playAll(shuffled: true) })
+                    pillButton(systemImage: "play.fill", label: "Play All", action: { playAll(shuffled: false) })
+                }
+                .padding(.horizontal, Spacing.l)
+
                 ForEach(songs) { song in
                     SongRow(
                         song: song,
                         onToggleFavorite: { libraryService?.toggleFavorite(song) }
                     )
-                    .listRowBackground(ColorTokens.canvas)
                     .onTapGesture { tapped(song) }
                 }
+                .padding(.horizontal, Spacing.l)
             }
+            .padding(.top, Spacing.s)
+            .padding(.bottom, 140)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
+    }
+
+    private func pillButton(systemImage: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: Spacing.xs) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 12, weight: .semibold))
+                Text(label)
+                    .font(Typography.subhead)
+                    .fontWeight(.semibold)
+            }
+            .foregroundStyle(.black)
+            .padding(.horizontal, Spacing.m)
+            .padding(.vertical, Spacing.xs)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(ColorTokens.appAccent)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
     private var heroCard: some View {
-        switch heroStyle {
-        case .gradient(let colors):
-            VStack(spacing: Spacing.m) {
-                ZStack {
+        VStack(spacing: Spacing.m) {
+            ZStack {
+                switch heroStyle {
+                case .gradient(let colors):
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(
                             LinearGradient(
@@ -98,48 +111,17 @@ struct PlaylistDetailView: View {
                             )
                         )
                         .frame(width: 160, height: 160)
-                    switch heroStyle {
-                    case .gradient:  Image(systemName: "music.note").font(.system(size: 64)).foregroundStyle(.white)
-                    default: EmptyView()
-                    }
-                }
-                Text(title)
-                    .font(Typography.title1)
-                    .foregroundStyle(ColorTokens.textPrimary)
-                if let subtitle {
-                    Text(subtitle)
-                        .font(Typography.subhead)
-                        .foregroundStyle(ColorTokens.textSecondary)
-                        .monospacedDigit()
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, Spacing.l)
-        case .icon(let systemName):
-            VStack(spacing: Spacing.m) {
-                ZStack {
+                    Image(systemName: "music.note")
+                        .font(.system(size: 64))
+                        .foregroundStyle(.white)
+                case .icon(let systemName):
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(ColorTokens.appAccent.opacity(0.85))
                         .frame(width: 160, height: 160)
                     Image(systemName: systemName)
                         .font(.system(size: 64, weight: .semibold))
-                        .foregroundStyle(.white)
-                }
-                Text(title)
-                    .font(Typography.title1)
-                    .foregroundStyle(ColorTokens.textPrimary)
-                if let subtitle {
-                    Text(subtitle)
-                        .font(Typography.subhead)
-                        .foregroundStyle(ColorTokens.textSecondary)
-                        .monospacedDigit()
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, Spacing.l)
-        case .heart:
-            VStack(spacing: Spacing.m) {
-                ZStack {
+                        .foregroundStyle(.black)
+                case .heart:
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(ColorTokens.destructive.opacity(0.85))
                         .frame(width: 160, height: 160)
@@ -147,22 +129,22 @@ struct PlaylistDetailView: View {
                         .font(.system(size: 64, weight: .bold))
                         .foregroundStyle(.white)
                 }
-                Text(title)
-                    .font(Typography.title1)
-                    .foregroundStyle(ColorTokens.textPrimary)
-                if let subtitle {
-                    Text(subtitle)
-                        .font(Typography.subhead)
-                        .foregroundStyle(ColorTokens.textSecondary)
-                        .monospacedDigit()
-                }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, Spacing.l)
-        }
-    }
 
-    // MARK: - Actions
+            Text(title)
+                .font(Typography.title1)
+                .fontWeight(.bold)
+                .foregroundStyle(ColorTokens.textPrimary)
+            if let subtitle {
+                Text(subtitle)
+                    .font(Typography.subhead)
+                    .foregroundStyle(ColorTokens.textSecondary)
+                    .monospacedDigit()
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Spacing.l)
+    }
 
     private func playAll(shuffled: Bool) {
         let list = shuffled ? songs.shuffled() : songs
