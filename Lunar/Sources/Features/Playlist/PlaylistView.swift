@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Playlist tab with MeloPlayer styling.
+/// Playlist tab with MeloPlayer liquid-glass styling.
 @MainActor
 struct PlaylistView: View {
 
@@ -18,7 +18,7 @@ struct PlaylistView: View {
     @State private var recentlyPlayed: [Song] = []
     @State private var favorites: [Song] = []
 
-    @Query(sort: [SortDescriptor(\Playlist.dateCreated, order: .forward)])
+    @Query(sort: [SortDescriptor(\\Playlist.dateCreated, order: .forward)])
     private var playlists: [Playlist]
 
     var body: some View {
@@ -145,7 +145,7 @@ struct PlaylistView: View {
 
     private var localPlaylistHeader: some View {
         HStack(spacing: Spacing.xs) {
-            Text("My Local Playlist (\(playlists.count))")
+            Text("My Local Playlist (\\(playlists.count))")
                 .font(Typography.title3)
                 .fontWeight(.bold)
                 .foregroundStyle(ColorTokens.textPrimary)
@@ -170,12 +170,12 @@ struct PlaylistView: View {
         let songs = playlist.songs
         let total = songs.reduce(0.0) { $0 + $1.duration }
         let formatted = formatTotal(total)
-        return "\(songs.count) song\(songs.count == 1 ? "" : "s") | \(formatted)"
+        return "\\(songs.count) song\\(songs.count == 1 ? "" : "s") | \\(formatted)"
     }
 
     private func subtitle(forSongs songs: [Song]) -> String {
         let total = songs.reduce(0.0) { $0 + $1.duration }
-        return "\(songs.count) song\(songs.count == 1 ? "" : "s") | \(formatTotal(total))"
+        return "\\(songs.count) song\\(songs.count == 1 ? "" : "s") | \\(formatTotal(total))"
     }
 
     private func formatTotal(_ seconds: TimeInterval) -> String {
@@ -184,8 +184,8 @@ struct PlaylistView: View {
         let h = total / 3600
         let m = total / 60
         let s = total % 60
-        if h > 0 { return "\(h):\(String(format: "%02d", m)):\(String(format: "%02d", s))" }
-        return "\(m):\(String(format: "%02d", s))"
+        if h > 0 { return "\\(h):\\(String(format: "%02d", m)):\\(String(format: "%02d", s))" }
+        return "\\(m):\\(String(format: "%02d", s))"
     }
 }
 
@@ -247,10 +247,7 @@ struct CreateNewRow: View {
             }
             .padding(.horizontal, Spacing.m)
             .padding(.vertical, Spacing.m)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(ColorTokens.surface)
-            )
+            .modifier(ColorTokens.glassCard(cornerRadius: 18))
         }
         .buttonStyle(.plain)
     }

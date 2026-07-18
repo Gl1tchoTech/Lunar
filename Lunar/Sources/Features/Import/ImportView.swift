@@ -2,15 +2,15 @@ import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
 
-/// Import tab with MeloPlayer styling.
+/// Import tab with MeloPlayer liquid-glass styling.
 @MainActor
 struct ImportView: View {
 
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\\modelContext) private var modelContext
     @Environment(AudioEngine.self) private var audioEngine
     @Environment(ImportManager.self) private var importManager
 
-    @Query(sort: [SortDescriptor(\Song.dateAdded, order: .reverse)])
+    @Query(sort: [SortDescriptor(\\Song.dateAdded, order: .reverse)])
     private var allSongs: [Song]
 
     @State private var isPickerPresented = false
@@ -113,8 +113,7 @@ struct ImportView: View {
             }
             .padding(Spacing.m)
             .frame(maxWidth: .infinity)
-            .background(ColorTokens.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .modifier(ColorTokens.glassCard(cornerRadius: 18))
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(ColorTokens.appAccent.opacity(0.35), lineWidth: 1)
@@ -132,7 +131,7 @@ struct ImportView: View {
             VStack(alignment: .leading, spacing: Spacing.s) {
                 sectionHeader(
                     title: "Imported Today",
-                    subtitle: "\(recent.count) \(recent.count == 1 ? "song" : "songs")"
+                    subtitle: "\\(recent.count) \\(recent.count == 1 ? "song" : "songs")"
                 )
                 VStack(spacing: Spacing.m) {
                     ForEach(recent) { song in
@@ -147,7 +146,7 @@ struct ImportView: View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             sectionHeader(
                 title: "All Library",
-                subtitle: "\(allSongs.count) \(allSongs.count == 1 ? "song" : "songs")"
+                subtitle: "\\(allSongs.count) \\(allSongs.count == 1 ? "song" : "songs")"
             )
             VStack(spacing: Spacing.m) {
                 ForEach(allSongs.prefix(20)) { song in
@@ -252,10 +251,7 @@ private struct ImportSongRow: View {
             }
             .padding(.horizontal, Spacing.m)
             .padding(.vertical, Spacing.s)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(ColorTokens.surface)
-            )
+            .modifier(ColorTokens.glassCard(cornerRadius: 16))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

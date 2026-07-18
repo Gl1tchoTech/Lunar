@@ -68,10 +68,7 @@ struct EqualizerView: View {
         VStack(spacing: 0) {
             content()
         }
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(ColorTokens.surface)
-        )
+        .modifier(ColorTokens.glassCard(cornerRadius: 18))
     }
 }
 

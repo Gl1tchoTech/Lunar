@@ -29,6 +29,13 @@ enum ColorTokens {
     /// `liquidGlass` helper view modifier.
     static let liquidGlass: some ViewModifier = LiquidGlassModifier()
 
+    /// A translucent, blurred card surface used for grouped rows and sheets.
+    /// Applies `.ultraThinMaterial`, a tinted base color, and a subtle white
+    /// hairline stroke for the liquid-glass look.
+    static func glassCard(cornerRadius: CGFloat = 18) -> some ViewModifier {
+        GlassCardModifier(cornerRadius: cornerRadius)
+    }
+
     // MARK: — Text
 
     static let textPrimary:   Color = .white
@@ -57,6 +64,28 @@ private struct LiquidGlassModifier: ViewModifier {
             .overlay(
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
                     .stroke(Color.white.opacity(0.10), lineWidth: 1)
+            )
+    }
+}
+
+// MARK: - Glass Card Modifier
+
+private struct GlassCardModifier: ViewModifier {
+    let cornerRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(ColorTokens.surface.opacity(0.45))
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
             )
     }
 }

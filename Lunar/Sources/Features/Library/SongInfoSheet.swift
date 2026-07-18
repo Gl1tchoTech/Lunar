@@ -1,245 +1,150 @@
 import SwiftUI
 import SwiftData
 
-/// **Song Info** — full bottom-of-the-song sheet. Surfaces identity,
-/// audio metadata, file location, and the primary song actions
-/// (Add to Playlist · Toggle Favorite · Share). Mirrors the inset-
-/// grouped Form style already used by `AboutView` and the Settings
-/// destinations so the visual language stays consistent.
-///
-/// Presented from `SongRow.contextMenu` -> "Song Info" via the host
-/// view's `.sheet(isPresented:)` modifier (each hosting surface
-/// (Library / Playlist detail) keeps its own `@State`.
+/// Song metadata editor presented from the Library context menu.
 @MainActor
 struct SongInfoSheet: View {
 
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+
     let song: Song
 
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss)      private var dismiss
-
-    @State private var libraryService: LibraryService?
-    @State private var presentingAddSuccess: Bool = false
-    @State private var lastAddedPlaylistName: String = ""
-
-    /// Cached lookup so the "Lyrics" section knows whether to render
-    /// a status row or just an "Open" button. Mirrors `LyricsLibrary`'s
-    /// contract without coupling the sheet to it directly.
-    private var hasLyrics: Bool {
-        song.lyricsFileName?.isEmpty == false
-    }
+    @State private var title: String = ""
+    @State private var artist: String = ""
+    @State private var album: String = ""
+    @State private var trackNumber: String = ""
+    @State private var year: String = ""
 
     var body: some View {
         NavigationStack {
-            Form {
-                identitySection
-                metadataSection
-                fileSection
-                lyricsSection
-                actionsSection
+            ZStack {
+                ColorTokens.canvas.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Spacing.l) {
+                        artworkSection
+                        formSection
+                    }
+                    .padding(.horizontal, Spacing.l)
+                    .padding(.top, Spacing.s)
+                    .padding(.bottom, 140)
+                }
             }
-            .scrollContentBackground(.hidden)
-            .background(ColorTokens.canvas)
             .navigationTitle("Song Info")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundStyle(ColorTokens.textSecondary)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
-            }
-            .alert(
-                "Added to \(lastAddedPlaylistName)",
-                isPresented: $presentingAddSuccess
-            ) {
-                Button("OK", role: .cancel) {}
-            }
-            .task {
-                if libraryService == nil {
-                    libraryService = LibraryService(context: modelContext)
+                    Button("Save") { save() }
+                        .fontWeight(.semibold)
+                        .foregroundStyle(ColorTokens.appAccent)
                 }
             }
         }
-    }
-
-    // MARK: - Sections
-
-    private var identitySection: some View {
-        Section("Identity") {
-            LabeledContent("Title",  value: song.title)
-            LabeledContent("Artist", value: song.artist)
-            if let album = song.albumTitle, !album.isEmpty {
-                LabeledContent("Album", value: album)
-            }
-            if let trackNumber = song.trackNumber {
-                LabeledContent("Track",
-                               value: String(trackNumber))
-            }
-            if let year = song.year {
-                LabeledContent("Year", value: String(year))
-            }
+        .onAppear {
+            title = song.title
+            artist = song.artist
+            album = song.albumTitle ?? ""
+            trackNumber = song.trackNumber.map(String.init) ?? ""
+            year = song.year.map(String.init) ?? ""
         }
     }
 
-    private var metadataSection: some View {
-        Section("Audio") {
-            if let format = song.format {
-                LabeledContent("Format",     value: format)
-            }
-            if let bitrate = song.bitrate {
-                LabeledContent("Bitrate",
-                               value: "\(bitrate) kbps")
-            }
-            if let sampleRate = song.sampleRate {
-                LabeledContent("Sample Rate",
-                               value: "\(Int(sampleRate)) Hz")
-            }
-            if let bitDepth = song.bitDepth {
-                LabeledContent("Bit Depth",
-                               value: "\(bitDepth)-bit")
-            }
-            LabeledContent("Duration",
-                           value: durationString)
-            LabeledContent("File Size",
-                           value: fileSizeString)
-        }
-    }
+    private var artworkSection: some View {
+        HStack {
+            Spacer()
+            VStack(spacing: Spacing.s) {
+                if let data = song.artwork, let image = UIImage(data: data) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 160, height: 160)
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                } else {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(ColorTokens.elevated)
+                        .frame(width: 160, height: 160)
+                        .overlay(
+                            Image(systemName: "music.note")
+                                .font(.system(size: 48, weight: .light))
+                                .foregroundStyle(ColorTokens.textTertiary)
+                        )
+                }
 
-    private var fileSection: some View {
-        Section("File") {
-            LabeledContent("Name") {
-                Text(song.fileName)
-                    .font(.caption)
-                    .foregroundStyle(ColorTokens.textSecondary)
+                Text(song.title)
+                    .font(Typography.headline)
+                    .foregroundStyle(ColorTokens.textPrimary)
                     .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-            LabeledContent("Plays") {
-                Text("\(song.playCount)")
+                Text(formatDuration(song.duration))
+                    .font(Typography.subhead)
                     .foregroundStyle(ColorTokens.textSecondary)
                     .monospacedDigit()
             }
+            Spacer()
         }
+        .padding(.vertical, Spacing.m)
     }
 
-    @ViewBuilder
-    private var lyricsSection: some View {
-        Section("Lyrics") {
-            if hasLyrics {
-                LabeledContent("Status") {
-                    Text("Synced (.lrc)")
-                        .foregroundStyle(ColorTokens.success)
-                }
-            } else {
-                LabeledContent("Status") {
-                    Text("Not imported")
-                        .foregroundStyle(ColorTokens.textTertiary)
-                }
-                Text("Drop a `.lrc` file from any source app into the Import flow to attach lyrics to this song.")
-                    .font(.caption)
-                    .foregroundStyle(ColorTokens.textTertiary)
+    private var formSection: some View {
+        VStack(spacing: Spacing.m) {
+            formField(title: "Title", text: $title)
+            formField(title: "Artist", text: $artist)
+            formField(title: "Album", text: $album)
+            HStack(spacing: Spacing.m) {
+                formField(title: "Track", text: $trackNumber, keyboardType: .numberPad)
+                formField(title: "Year", text: $year, keyboardType: .numberPad)
             }
         }
+        .modifier(ColorTokens.glassCard(cornerRadius: 18))
     }
 
-    private var actionsSection: some View {
-        Section("Actions") {
-            addToPlaylistRow
-            favoriteToggleRow
-            if let url = MusicLibrary.absoluteURL(forFileName: song.fileName) {
-                ShareLink(item: url) {
-                    Label("Share File", systemImage: "square.and.arrow.up")
-                }
-            }
+    private func formField(title: String, text: Binding<String>, keyboardType: UIKeyboardType = .default) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            Text(title)
+                .font(Typography.caption1)
+                .foregroundStyle(ColorTokens.textSecondary)
+                .padding(.horizontal, Spacing.m)
+            TextField(title, text: text)
+                .font(Typography.body)
+                .foregroundStyle(ColorTokens.textPrimary)
+                .padding(.horizontal, Spacing.m)
+                .padding(.vertical, Spacing.s)
+                #if !os(macOS)
+                .keyboardType(keyboardType)
+                #endif
         }
     }
 
-    @ViewBuilder
-    private var addToPlaylistRow: some View {
-        if let service = libraryService {
-            Menu {
-                let playlists = (try? modelContext.fetch(
-                    FetchDescriptor<Playlist>(
-                        sortBy: [SortDescriptor(\.dateCreated, order: .forward)]
-                    )
-                )) ?? []
-                if playlists.isEmpty {
-                    Text("No playlists yet")
-                } else {
-                    ForEach(playlists) { playlist in
-                        Button(playlist.title) {
-                            service.add(song, to: playlist)
-                            lastAddedPlaylistName = playlist.title
-                            presentingAddSuccess = true
-                        }
-                    }
-                }
-            } label: {
-                Label("Add to Playlist", systemImage: "text.badge.plus")
-            }
-        } else {
-            Label("Add to Playlist", systemImage: "text.badge.plus")
-                .foregroundStyle(ColorTokens.textTertiary)
-        }
+    private func save() {
+        song.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        song.artist = artist.trimmingCharacters(in: .whitespacesAndNewlines)
+        song.albumTitle = album.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        song.trackNumber = Int(trackNumber.trimmingCharacters(in: .whitespacesAndNewlines))
+        song.year = Int(year.trimmingCharacters(in: .whitespacesAndNewlines))
+
+        try? modelContext.save()
+        dismiss()
     }
 
-    private var favoriteToggleRow: some View {
-        Button {
-            libraryService?.toggleFavorite(song)
-        } label: {
-            Label(
-                song.isFavorite ? "Unfavorite" : "Favorite",
-                systemImage: song.isFavorite ? "heart.slash" : "heart"
-            )
-            .foregroundStyle(
-                song.isFavorite
-                    ? ColorTokens.destructive
-                    : ColorTokens.textPrimary
-            )
-        }
-    }
-
-    // MARK: - Formatters
-
-    private var durationString: String {
-        let total = Int(song.duration.rounded())
+    private func formatDuration(_ seconds: TimeInterval) -> String {
+        guard seconds.isFinite, seconds > 0 else { return "--:--" }
+        let total = Int(seconds.rounded())
         let h = total / 3600
         let m = (total % 3600) / 60
         let s = total % 60
         if h > 0 { return String(format: "%d:%02d:%02d", h, m, s) }
         return String(format: "%d:%02d", m, s)
     }
-
-    private var fileSizeString: String {
-        ByteCountFormatter.string(
-            fromByteCount: song.fileSize,
-            countStyle: .file
-        )
-    }
 }
 
-#Preview {
-    let container = try! ModelContainer(
-        for: LunarSchema.schema,
-        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-    )
-    let context = container.mainContext
-    let song = Song(
-        title: "Sample Track",
-        artist: "Gl1tcho",
-        albumTitle: "Demo Album",
-        trackNumber: 1,
-        year: 2026,
-        duration: 213,
-        fileName: "demo-uuid.mp3",
-        fileSize: 4_200_000,
-        format: "MP3",
-        bitrate: 320,
-        sampleRate: 44_100,
-        bitDepth: 16
-    )
-    context.insert(song)
-    return SongInfoSheet(song: song)
-        .modelContainer(container)
-        .preferredColorScheme(.dark)
+private extension String {
+    var nilIfEmpty: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
 }

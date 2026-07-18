@@ -83,13 +83,12 @@ private struct ThemePreviewCard: View {
             }
             .padding(Spacing.m)
             .frame(maxWidth: .infinity)
-            .background(palette.linearBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .modifier(ColorTokens.glassCard(cornerRadius: 18))
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(
-                        isSelected ? ColorTokens.appAccent : ColorTokens.hairline,
-                        lineWidth: isSelected ? 2 : 1
+                        isSelected ? ColorTokens.appAccent : Color.clear,
+                        lineWidth: isSelected ? 2 : 0
                     )
             )
         }

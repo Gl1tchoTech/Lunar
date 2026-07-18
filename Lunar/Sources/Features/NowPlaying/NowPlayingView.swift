@@ -14,6 +14,7 @@ struct NowPlayingView: View {
     @State private var presentingLyricsSheet = false
     @State private var presentingSpeedSheet = false
     @State private var presentingMoreMenu = false
+    @State private var presentingRoutePicker = false
 
     var body: some View {
         let palette = themeManager.palette
@@ -62,6 +63,9 @@ struct NowPlayingView: View {
             PlaybackSpeedSheet()
                 .environment(engine)
         }
+        .sheet(isPresented: $presentingRoutePicker) {
+            RoutePickerSheet()
+        }
     }
 
     // MARK: - Background
@@ -107,7 +111,7 @@ struct NowPlayingView: View {
                 onTap: { presentingLyricsSheet = true }
             )
 
-            AirPlayRouteButton(palette: palette)
+            routePickerButton(palette: palette)
 
             if engine.currentQueueIndex >= 0 && engine.queueSize > 1 {
                 Text("\(engine.currentQueueIndex + 1) / \(engine.queueSize)")
@@ -210,6 +214,23 @@ struct NowPlayingView: View {
                 .foregroundStyle(palette.primaryText)
         }
         .buttonStyle(.plain)
+    }
+
+    private func routePickerButton(palette: PlayerThemePalette) -> some View {
+        Button {
+            presentingRoutePicker = true
+        } label: {
+            Image(systemName: "airplayaudio")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(palette.primaryText)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule().fill(palette.railBackground)
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("AirPlay & Speakers")
     }
 
     private func moreButton(palette: PlayerThemePalette) -> some View {

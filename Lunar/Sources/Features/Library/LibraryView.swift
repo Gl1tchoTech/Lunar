@@ -66,6 +66,10 @@ struct LibraryView: View {
                 SongInfoSheet(song: song)
                     .modelContainer(modelContext.container)
             }
+            .sheet(isPresented: $showingSelectMode) {
+                SelectModeSheet(songs: allSongs)
+                    .modelContainer(modelContext.container)
+            }
             .fullScreenCover(isPresented: $presentingNowPlaying) {
                 NowPlayingView()
                     .environment(audioEngine)

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Settings tab with MeloPlayer-style grouped rounded cards.
+/// Settings tab with MeloPlayer-style grouped rounded cards and liquid glass.
 @MainActor
 struct SettingsView: View {
 
@@ -80,10 +80,7 @@ struct SettingsView: View {
             VStack(spacing: 0) {
                 content()
             }
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(ColorTokens.surface)
-            )
+            .modifier(ColorTokens.glassCard(cornerRadius: 18))
         }
     }
 
@@ -143,7 +140,7 @@ struct SettingsView: View {
 
     private var sleepTimerTrailingLabel: String {
         if sleepTimer.durationMinutes == 0 { return "Off" }
-        return "\(sleepTimer.durationMinutes) min"
+        return "\\(sleepTimer.durationMinutes) min"
     }
 }
 
