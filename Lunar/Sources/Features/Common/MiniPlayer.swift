@@ -66,7 +66,8 @@ struct MiniPlayer: View {
                 .frame(maxWidth: .infinity)
                 .background(
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(ColorTokens.surface)
+                        .fill(.ultraThinMaterial)
+                        .background(ColorTokens.glass)
                         .overlay(
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .stroke(Color.white.opacity(0.08), lineWidth: 1)

@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Row representing a single artist in the Library Artists tab.
+/// Row representing a single artist in the library Artists tab.
 @MainActor
 struct ArtistRow: View {
 
@@ -31,7 +31,12 @@ struct ArtistRow: View {
         .padding(.vertical, Spacing.s)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(ColorTokens.surface)
+                .fill(.ultraThinMaterial)
+                .background(ColorTokens.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                )
         )
         .contentShape(Rectangle())
     }

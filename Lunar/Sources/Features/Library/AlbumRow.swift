@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Row representing a single album in the Library Albums tab.
+/// Row representing a single album in the library Albums tab.
 @MainActor
 struct AlbumRow: View {
 
@@ -35,7 +35,12 @@ struct AlbumRow: View {
         .padding(.vertical, Spacing.s)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(ColorTokens.surface)
+                .fill(.ultraThinMaterial)
+                .background(ColorTokens.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                )
         )
         .contentShape(Rectangle())
     }

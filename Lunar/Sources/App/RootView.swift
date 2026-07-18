@@ -9,14 +9,14 @@ struct RootView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AudioEngine.self) private var audioEngine
 
-    @State private var selectedTab: AppTab = .library
+    @State private var tabRouter = TabRouter()
     @State private var presentingNowPlaying = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
             // Main content area
             Group {
-                switch selectedTab {
+                switch tabRouter.selectedTab {
                 case .library:  LibraryView()
                 case .playlist: PlaylistView()
                 case .importer: ImportView()
@@ -31,13 +31,14 @@ struct RootView: View {
                 MiniPlayer(isPresented: $presentingNowPlaying)
                     .padding(.horizontal, Spacing.m)
                     .padding(.bottom, Spacing.s)
-                FloatingTabBar(selectedTab: $selectedTab)
+                FloatingTabBar(selectedTab: $tabRouter.selectedTab)
                     .padding(.horizontal, Spacing.m)
                     .padding(.bottom, Spacing.s)
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
         }
         .background(ColorTokens.canvas.ignoresSafeArea())
+        .environment(tabRouter)
         .task {
             Seed.seedBuiltInPresetsIfNeeded(context: modelContext)
         }
@@ -50,8 +51,8 @@ struct RootView: View {
 
 // MARK: - FloatingTabBar
 
-/// MeloPlayer-style floating tab bar. Glassy dark pill with icon + label
-/// rows, lime accent for the selected tab.
+/// MeloPlayer-style floating tab bar. Liquid-glass dark pill with icon +
+/// label rows, lime accent for the selected tab.
 @MainActor
 struct FloatingTabBar: View {
 
@@ -67,7 +68,8 @@ struct FloatingTabBar: View {
         .padding(.vertical, Spacing.xs)
         .background(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(ColorTokens.glass)
+                .fill(.ultraThinMaterial)
+                .background(ColorTokens.glass)
                 .overlay(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
                         .stroke(Color.white.opacity(0.10), lineWidth: 1)

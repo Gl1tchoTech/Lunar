@@ -22,6 +22,13 @@ enum ColorTokens {
     /// Floating tab bar / mini-player glass background.
     static let glass: Color = Color(white: 0.12).opacity(0.95)
 
+    // MARK: — Liquid Glass
+
+    /// True liquid-glass material for floating chrome (tab bar, mini-player,
+    /// sheets, cards). Use with `.background(.ultraThinMaterial)` or the
+    /// `liquidGlass` helper view modifier.
+    static let liquidGlass: some ViewModifier = LiquidGlassModifier()
+
     // MARK: — Text
 
     static let textPrimary:   Color = .white
@@ -38,4 +45,18 @@ enum ColorTokens {
 
     static let cyberNeonPink: Color = Color(red: 1.00, green: 0.42, blue: 0.74)
     static let cyberNeonCyan: Color = Color(red: 0.27, green: 0.92, blue: 1.00)
+}
+
+// MARK: - Liquid Glass Modifier
+
+private struct LiquidGlassModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background(.ultraThinMaterial)
+            .background(ColorTokens.glass)
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+            )
+    }
 }

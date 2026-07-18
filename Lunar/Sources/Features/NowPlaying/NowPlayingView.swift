@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Full-screen Now Playing cover with MeloPlayer styling.
+/// Full-screen Now Playing with MeloPlayer styling.
 @MainActor
 struct NowPlayingView: View {
 
@@ -8,14 +8,18 @@ struct NowPlayingView: View {
     @Environment(AudioEngine.self) private var engine
     @Environment(PlayerThemeManager.self) private var themeManager
     @Environment(SleepTimer.self) private var sleepTimer
+    @Environment(\.modelContext) private var modelContext
 
     @State private var presentingSleepSheet = false
     @State private var presentingLyricsSheet = false
+    @State private var presentingSpeedSheet = false
+    @State private var presentingMoreMenu = false
 
     var body: some View {
         let palette = themeManager.palette
         ZStack {
-            palette.linearBackground.ignoresSafeArea()
+            // Blurred artwork background
+            artworkBackground(palette: palette)
 
             VStack(spacing: 0) {
                 dismissChrome(palette: palette)
@@ -54,6 +58,25 @@ struct NowPlayingView: View {
                 .environment(engine)
                 .environment(themeManager)
         }
+        .sheet(isPresented: $presentingSpeedSheet) {
+            PlaybackSpeedSheet()
+                .environment(engine)
+        }
+    }
+
+    // MARK: - Background
+
+    private func artworkBackground(palette: PlayerThemePalette) -> some View {
+        ZStack {
+            palette.linearBackground
+            Image(systemName: "music.note")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 600, height: 600)
+                .foregroundStyle(palette.accent.opacity(0.08))
+                .blur(radius: 80)
+        }
+        .ignoresSafeArea()
     }
 
     // MARK: - Top chrome
@@ -134,37 +157,79 @@ struct NowPlayingView: View {
 
     private func bottomActionBar(palette: PlayerThemePalette) -> some View {
         HStack(spacing: Spacing.xl) {
-            Button { } label: {
-                Image(systemName: "heart")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(palette.primaryText)
-            }
-            .buttonStyle(.plain)
-
-            Button { } label: {
-                Image(systemName: "text.alignleft")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(palette.primaryText)
-            }
-            .buttonStyle(.plain)
+            favoriteButton(palette: palette)
+            lyricsButton(palette: palette)
 
             Spacer()
 
-            Button { } label: {
-                Image(systemName: "speaker.wave.2")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(palette.primaryText)
-            }
-            .buttonStyle(.plain)
-
-            Button { } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(palette.primaryText)
-            }
-            .buttonStyle(.plain)
+            speedButton(palette: palette)
+            moreButton(palette: palette)
         }
         .padding(.horizontal, Spacing.xl)
+    }
+
+    private func favoriteButton(palette: PlayerThemePalette) -> some View {
+        Button {
+            guard let id = engine.currentSongID,
+                  let song = modelContext.model(for: id) as? Song
+            else { return }
+            let service = LibraryService(context: modelContext)
+            service.toggleFavorite(song)
+        } label: {
+            Image(systemName: currentSongIsFavorite ? "heart.fill" : "heart")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(currentSongIsFavorite ? ColorTokens.appAccent : palette.primaryText)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var currentSongIsFavorite: Bool {
+        guard let id = engine.currentSongID,
+              let song = modelContext.model(for: id) as? Song
+        else { return false }
+        return song.isFavorite
+    }
+
+    private func lyricsButton(palette: PlayerThemePalette) -> some View {
+        Button {
+            presentingLyricsSheet = true
+        } label: {
+            Image(systemName: "text.alignleft")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(palette.primaryText)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func speedButton(palette: PlayerThemePalette) -> some View {
+        Button {
+            presentingSpeedSheet = true
+        } label: {
+            Image(systemName: "gauge.with.dots.needle.67percent")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(palette.primaryText)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func moreButton(palette: PlayerThemePalette) -> some View {
+        Menu {
+            Button {
+                // Route picker is handled by AirPlay button; this is a fallback.
+            } label: {
+                Label("AirPlay & Speakers", systemImage: "airplayaudio")
+            }
+            Button {
+                // Share current song
+            } label: {
+                Label("Share", systemImage: "square.and.arrow.up")
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(palette.primaryText)
+        }
+        .buttonStyle(.plain)
     }
 }
 

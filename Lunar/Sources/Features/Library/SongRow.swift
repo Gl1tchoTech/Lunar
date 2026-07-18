@@ -43,7 +43,12 @@ struct SongRow: View {
         .padding(.vertical, Spacing.s)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(ColorTokens.surface)
+                .fill(.ultraThinMaterial)
+                .background(ColorTokens.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                )
         )
         .contentShape(Rectangle())
     }

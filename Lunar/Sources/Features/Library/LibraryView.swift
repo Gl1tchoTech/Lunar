@@ -7,6 +7,7 @@ struct LibraryView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(AudioEngine.self) private var audioEngine
+    @Environment(TabRouter.self) private var tabRouter
 
     @State private var libraryService: LibraryService?
     @State private var sortKey: LibrarySortKey = .artistName
@@ -18,6 +19,7 @@ struct LibraryView: View {
     @State private var searchText: String = ""
     @State private var debouncedSearchText: String = ""
     @State private var songInfoTarget: Song?
+    @State private var showingSelectMode = false
 
     @Query private var allSongs: [Song]
 
@@ -37,13 +39,12 @@ struct LibraryView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                header
+                customHeader
                 tabStrip
                 content
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .background(ColorTokens.canvas)
-            .navigationTitle("Library")
             .searchable(
                 text: $searchText,
                 placement: .navigationBarDrawer(displayMode: .automatic),
@@ -54,57 +55,6 @@ struct LibraryView: View {
                 if Task.isCancelled { return }
                 debouncedSearchText = searchText
             }
-            .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button {
-                        selectedTab = .songs
-                        // Trigger import via environment ImportManager.
-                        importManager.requestImport()
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(ColorTokens.textPrimary)
-                            .frame(width: 36, height: 36)
-                            .background(
-                                Circle()
-                                    .fill(ColorTokens.surface)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Add songs")
-
-                    Menu {
-                        Button {
-                            searchText = ""
-                            // Focus is handled by searchable automatically when text changes.
-                        } label: {
-                            Label("Search", systemImage: "magnifyingglass")
-                        }
-                        Button {
-                            // Select mode toggled via sheet.
-                        } label: {
-                            Label("Select", systemImage: "checkmark.circle")
-                        }
-                        Button {
-                            // Feedback stub.
-                        } label: {
-                            Label("Feedback", systemImage: "envelope")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(ColorTokens.textPrimary)
-                            .frame(width: 36, height: 36)
-                            .background(
-                                Circle()
-                                    .fill(ColorTokens.surface)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("More")
-                }
-            }
-            .toolbarColorScheme(.dark, for: .navigationBar)
             .sheet(isPresented: $showingSortMenu) {
                 SortMenu(
                     sortKey: $sortKey,
@@ -136,12 +86,59 @@ struct LibraryView: View {
 
     // MARK: - Header
 
-    private var header: some View {
-        HStack {
+    private var customHeader: some View {
+        HStack(spacing: Spacing.s) {
             Text("Library")
                 .font(Typography.display)
                 .foregroundStyle(ColorTokens.textPrimary)
+
             Spacer()
+
+            HStack(spacing: Spacing.s) {
+                Button {
+                    tabRouter.selectedTab = .importer
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(ColorTokens.textPrimary)
+                        .frame(width: 36, height: 36)
+                        .background(
+                            Circle()
+                                .fill(ColorTokens.surface)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add songs")
+
+                Menu {
+                    Button {
+                        searchText = ""
+                    } label: {
+                        Label("Search", systemImage: "magnifyingglass")
+                    }
+                    Button {
+                        showingSelectMode = true
+                    } label: {
+                        Label("Select", systemImage: "checkmark.circle")
+                    }
+                    Button {
+                        // Feedback stub — could open mail composer in future.
+                    } label: {
+                        Label("Feedback", systemImage: "envelope")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(ColorTokens.textPrimary)
+                        .frame(width: 36, height: 36)
+                        .background(
+                            Circle()
+                                .fill(ColorTokens.surface)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("More")
+            }
         }
         .padding(.horizontal, Spacing.l)
         .padding(.top, Spacing.s)
@@ -164,15 +161,16 @@ struct LibraryView: View {
                             .foregroundStyle(
                                 tab == selectedTab ? ColorTokens.textPrimary : ColorTokens.textSecondary
                             )
-                        if selectedTab == tab {
-                            Rectangle()
-                                .fill(ColorTokens.appAccent)
-                                .frame(width: 20, height: 3)
-                                .clipShape(Capsule())
-                        } else {
+                        ZStack {
                             Rectangle()
                                 .fill(Color.clear)
                                 .frame(width: 20, height: 3)
+                            if selectedTab == tab {
+                                Rectangle()
+                                    .fill(ColorTokens.appAccent)
+                                    .frame(width: 20, height: 3)
+                                    .clipShape(Capsule())
+                            }
                         }
                     }
                     .frame(maxWidth: .infinity)

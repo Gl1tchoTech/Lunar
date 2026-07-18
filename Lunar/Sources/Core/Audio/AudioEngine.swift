@@ -333,6 +333,15 @@ final class AudioEngine: AudioPlayerInterface {
         notifyStateChange()
     }
 
+    /// Adjust the playback rate (speed) via the time-pitch unit.
+    /// 1.0 = normal speed, 0.5 = half speed, 2.0 = double speed.
+    func setPlaybackRate(_ rate: Float) {
+        let clamped = min(2.0, max(0.5, rate))
+        timePitch.rate = clamped
+        state.playbackRate = clamped
+        notifyStateChange()
+    }
+
     // MARK: - Queue
 
     /// Replace the in-memory queue and start playback at `startIndex`.
