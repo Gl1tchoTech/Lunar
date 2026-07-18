@@ -55,14 +55,53 @@ struct LibraryView: View {
                 debouncedSearchText = searchText
             }
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: Spacing.m) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button {
+                        selectedTab = .songs
+                        // Trigger import via environment ImportManager.
+                        importManager.requestImport()
+                    } label: {
                         Image(systemName: "plus")
-                            .accessibilityLabel("Add songs")
-                        Image(systemName: "ellipsis")
-                            .accessibilityLabel("More")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(ColorTokens.textPrimary)
+                            .frame(width: 36, height: 36)
+                            .background(
+                                Circle()
+                                    .fill(ColorTokens.surface)
+                            )
                     }
-                    .foregroundStyle(ColorTokens.appAccent)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Add songs")
+
+                    Menu {
+                        Button {
+                            searchText = ""
+                            // Focus is handled by searchable automatically when text changes.
+                        } label: {
+                            Label("Search", systemImage: "magnifyingglass")
+                        }
+                        Button {
+                            // Select mode toggled via sheet.
+                        } label: {
+                            Label("Select", systemImage: "checkmark.circle")
+                        }
+                        Button {
+                            // Feedback stub.
+                        } label: {
+                            Label("Feedback", systemImage: "envelope")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(ColorTokens.textPrimary)
+                            .frame(width: 36, height: 36)
+                            .background(
+                                Circle()
+                                    .fill(ColorTokens.surface)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("More")
                 }
             }
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -111,30 +150,39 @@ struct LibraryView: View {
     // MARK: - Tab strip
 
     private var tabStrip: some View {
-        HStack(spacing: Spacing.s) {
+        HStack(spacing: 0) {
             ForEach(LibraryListTab.allCases) { tab in
                 Button {
-                    selectedTab = tab
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedTab = tab
+                    }
                 } label: {
-                    Text(tab.label)
-                        .font(Typography.subhead)
-                        .fontWeight(tab == selectedTab ? .bold : .medium)
-                        .foregroundStyle(
-                            tab == selectedTab ? ColorTokens.appAccent : ColorTokens.textSecondary
-                        )
-                        .padding(.horizontal, Spacing.m)
-                        .padding(.vertical, Spacing.xs)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(tab == selectedTab ? ColorTokens.appAccent.opacity(0.15) : Color.clear)
-                        )
+                    VStack(spacing: 6) {
+                        Text(tab.label)
+                            .font(Typography.subhead)
+                            .fontWeight(tab == selectedTab ? .bold : .medium)
+                            .foregroundStyle(
+                                tab == selectedTab ? ColorTokens.textPrimary : ColorTokens.textSecondary
+                            )
+                        if selectedTab == tab {
+                            Rectangle()
+                                .fill(ColorTokens.appAccent)
+                                .frame(width: 20, height: 3)
+                                .clipShape(Capsule())
+                        } else {
+                            Rectangle()
+                                .fill(Color.clear)
+                                .frame(width: 20, height: 3)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.xs)
                 }
                 .buttonStyle(.plain)
             }
-            Spacer()
         }
         .padding(.horizontal, Spacing.l)
-        .padding(.vertical, Spacing.s)
+        .padding(.vertical, Spacing.xs)
     }
 
     // MARK: - Content

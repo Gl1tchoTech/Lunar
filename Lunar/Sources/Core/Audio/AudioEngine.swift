@@ -81,6 +81,7 @@ final class AudioEngine: AudioPlayerInterface {
     private let engine = AVAudioEngine()
     private let playerA = AVAudioPlayerNode()
     private let playerB = AVAudioPlayerNode()
+    private let crossfadeMixer = AVAudioMixerNode()
     private let timePitch = AVAudioUnitTimePitch()
     private let eq = EQController.makeUnit()
 
@@ -174,6 +175,7 @@ final class AudioEngine: AudioPlayerInterface {
     private func installGraph() {
         engine.attach(playerA)
         engine.attach(playerB)
+        engine.attach(crossfadeMixer)
         engine.attach(timePitch)
         engine.attach(eq)
 
@@ -182,8 +184,12 @@ final class AudioEngine: AudioPlayerInterface {
             channels: 2
         )
 
-        engine.connect(playerA, to: timePitch, format: format)
-        engine.connect(playerB, to: timePitch, format: format)
+        // Both players feed a mixer so the time-pitch unit only sees one input.
+        // AVAudioUnitTimePitch has a single input bus; connecting two sources
+        // directly to it crashes the engine.
+        engine.connect(playerA, to: crossfadeMixer, format: format)
+        engine.connect(playerB, to: crossfadeMixer, format: format)
+        engine.connect(crossfadeMixer, to: timePitch, format: format)
         engine.connect(timePitch, to: eq, format: format)
         engine.connect(eq, to: engine.mainMixerNode, format: format)
     }
