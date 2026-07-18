@@ -98,6 +98,74 @@ struct PlaylistView: View {
         case regular(Playlist)
         case smart(SmartPlaylistRoute)
     }
+}
+
+// MARK: - Smart Playlist Route
+
+enum SmartPlaylistRoute: Hashable {
+    case favorites([Song])
+    case mostPlayed([Song])
+    case recentlyPlayed([Song])
+
+    var kind: SmartPlaylistTile.Kind {
+        switch self {
+        case .favorites:      return .favorites
+        case .mostPlayed:     return .mostPlayed
+        case .recentlyPlayed: return .recentlyPlayed
+        }
+    }
+
+    var songs: [Song] {
+        switch self {
+        case .favorites(let songs),
+             .mostPlayed(let songs),
+             .recentlyPlayed(let songs):
+            return songs
+        }
+    }
+}
+
+extension SmartPlaylistTile.Kind {
+    var favoritesRouteStyle: PlaylistDetailView.HeroStyle {
+        switch self {
+        case .favorites:      return .heart
+        case .mostPlayed:     return .icon(systemName: "music.note")
+        case .recentlyPlayed: return .icon(systemName: "clock")
+        }
+    }
+}
+
+// MARK: - Create New Row
+
+struct CreateNewRow: View {
+
+    let action: () -> Void
+
+    var body: some View {
+        Button {
+            action()
+        } label: {
+            HStack(spacing: Spacing.m) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(ColorTokens.appAccent)
+
+                Text("Create New")
+                    .font(Typography.headline)
+                    .foregroundStyle(ColorTokens.textPrimary)
+
+                Spacer()
+            }
+            .padding(.horizontal, Spacing.m)
+            .padding(.vertical, Spacing.m)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(ColorTokens.surface)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
 
     private var header: some View {
         HStack {

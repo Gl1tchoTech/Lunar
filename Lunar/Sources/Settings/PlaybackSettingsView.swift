@@ -71,6 +71,16 @@ struct PlaybackSettingsView: View {
         if seconds <= 0 { return "Off" }
         return String(format: "%.1f s", seconds)
     }
+
+    private func settingsGroup<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(spacing: 0) {
+            content()
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(ColorTokens.surface)
+        )
+    }
 }
 
 // MARK: - CrossfadeSliderRow
