@@ -144,8 +144,8 @@ private struct VerticalSlider: View {
     var body: some View {
         Slider(
             value: $value,
-            in: Double(bounds.lowerBound)...Double(bounds.upperBound),
-            step: Double(step)
+            in: bounds,
+            step: step
         )
         .tint(ColorTokens.appAccent)
         .rotationEffect(.degrees(-90))
