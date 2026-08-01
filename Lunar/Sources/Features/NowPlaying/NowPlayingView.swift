@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 /// Full-screen Now Playing with MeloPlayer styling.
 @MainActor
@@ -73,12 +74,20 @@ struct NowPlayingView: View {
     private func artworkBackground(palette: PlayerThemePalette) -> some View {
         ZStack {
             palette.linearBackground
-            Image(systemName: "music.note")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 600, height: 600)
-                .foregroundStyle(palette.accent.opacity(0.08))
-                .blur(radius: 80)
+            if let image = currentSongArtworkImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .blur(radius: 60)
+                    .opacity(0.4)
+            } else {
+                Image(systemName: "music.note")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 600, height: 600)
+                    .foregroundStyle(palette.accent.opacity(0.08))
+                    .blur(radius: 80)
+            }
         }
         .ignoresSafeArea()
     }
@@ -126,16 +135,24 @@ struct NowPlayingView: View {
 
     // MARK: - Artwork
 
+    @ViewBuilder
     private func artworkCard(palette: PlayerThemePalette) -> some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(palette.railBackground)
-                .shadow(color: .black.opacity(0.50), radius: 24, x: 0, y: 12)
-            Image(systemName: "music.note")
-                .font(.system(size: 96, weight: .thin))
-                .foregroundStyle(palette.secondaryText)
+            if let image = currentSongArtworkImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(palette.railBackground)
+                Image(systemName: "music.note")
+                    .font(.system(size: 96, weight: .thin))
+                    .foregroundStyle(palette.secondaryText)
+            }
         }
         .frame(width: Spacing.albumArtLarge, height: Spacing.albumArtLarge)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: .black.opacity(0.50), radius: 24, x: 0, y: 12)
         .accessibilityHidden(true)
     }
 
@@ -192,6 +209,16 @@ struct NowPlayingView: View {
               let song = modelContext.model(for: id) as? Song
         else { return false }
         return song.isFavorite
+    }
+
+    /// Embedded artwork (if any) for the currently playing song —
+    /// rendered as the hero card and the blurred backdrop.
+    private var currentSongArtworkImage: UIImage? {
+        guard let id = engine.currentSongID,
+              let song = modelContext.model(for: id) as? Song,
+              let data = song.artwork
+        else { return nil }
+        return UIImage(data: data)
     }
 
     private func lyricsButton(palette: PlayerThemePalette) -> some View {

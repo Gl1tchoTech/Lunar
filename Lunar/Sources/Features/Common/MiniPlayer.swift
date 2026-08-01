@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 /// Floating mini-player card. Sits above the tab bar whenever a song
 /// is loaded, hidden otherwise. Tap launches the full Now Playing.
@@ -8,6 +9,7 @@ struct MiniPlayer: View {
     @Binding var isPresented: Bool
 
     @Environment(AudioEngine.self) private var engine
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         if engine.state.currentTitle.isEmpty {
@@ -82,11 +84,26 @@ struct MiniPlayer: View {
 
     @ViewBuilder
     private var artworkThumb: some View {
-        ZStack {
-            ColorTokens.elevated
-            Image(systemName: "music.note")
-                .font(.system(size: 18, weight: .light))
-                .foregroundStyle(ColorTokens.textTertiary)
+        if let image = currentArtworkImage {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+        } else {
+            ZStack {
+                ColorTokens.elevated
+                Image(systemName: "music.note")
+                    .font(.system(size: 18, weight: .light))
+                    .foregroundStyle(ColorTokens.textTertiary)
+            }
         }
+    }
+
+    /// Embedded artwork (if any) for the current song.
+    private var currentArtworkImage: UIImage? {
+        guard let id = engine.currentSongID,
+              let song = modelContext.model(for: id) as? Song,
+              let data = song.artwork
+        else { return nil }
+        return UIImage(data: data)
     }
 }

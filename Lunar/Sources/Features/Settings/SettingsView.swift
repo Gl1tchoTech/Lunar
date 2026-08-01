@@ -140,7 +140,7 @@ struct SettingsView: View {
 
     private var sleepTimerTrailingLabel: String {
         if sleepTimer.durationMinutes == 0 { return "Off" }
-        return "\\(sleepTimer.durationMinutes) min"
+        return "\(sleepTimer.durationMinutes) min"
     }
 }
 

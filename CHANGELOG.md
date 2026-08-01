@@ -6,6 +6,25 @@ All notable changes to **Lunar** are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixes + UI pass — compile-breakers, artwork rendering, liquid glass ✅
+
+- **Compile fixes** — escaped-backslash bugs in Swift string interpolation
+  and key paths (`\\(` → `\(`, `\\modelContext` → `\.modelContext`, etc.)
+  across `ImportView`, `PlaylistView`, `SelectModeSheet`, and
+  `SettingsView`. These were the Codemagic build-breakers: the doubled
+  backslashes render literal `\(` text in the UI and the malformed key
+  paths fail to compile.
+- **`NowPlayingView`** — now renders the playing song's **embedded artwork**
+  as the hero card (falling back to the music-note placeholder) and as a
+  blurred backdrop behind the player, matching the MeloPlayer reference.
+  Also gained the missing `import SwiftData` (was using `modelContext`
+  without it — a latent compile error).
+- **`MiniPlayer`** — thumbnail now shows the song's embedded artwork
+  instead of a static placeholder.
+- **Liquid glass everywhere** — `.ultraThinMaterial` glass cards, floating
+  tab bar, mini-player pill, and lime `#C7FF33` accent retained across all
+  tabs per the reference design.
+
 ### Step 5 — Tier 6: Import surface expansion ✅
 
 #### Other Apps handoff (`project.yml` + `ImportManager`)

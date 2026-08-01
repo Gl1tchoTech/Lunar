@@ -81,7 +81,7 @@ struct SelectModeSheet: View {
                 deleteSelected()
             }
         } message: {
-            Text("This will remove \\(selectedIDs.count) song\\(selectedIDs.count == 1 ? "" : "s") from your library.")
+            Text("This will remove \(selectedIDs.count) song\(selectedIDs.count == 1 ? "" : "s") from your library.")
         }
     }
 
@@ -91,7 +91,7 @@ struct SelectModeSheet: View {
 
     private var statusHeader: some View {
         HStack {
-            Text("\\(selectedIDs.count) selected")
+            Text("\(selectedIDs.count) selected")
                 .font(Typography.headline)
                 .foregroundStyle(ColorTokens.textPrimary)
             Spacer()
