@@ -193,7 +193,7 @@ struct SelectModeSheet: View {
         let service = LibraryService(context: modelContext)
         let playlist = service.createPlaylist(title: "Selected Songs")
         let selected = selectedSongs()
-        selected.forEach { playlist.add($0) }
+        selected.forEach { service.add($0, to: playlist) }
         dismiss()
     }
 }

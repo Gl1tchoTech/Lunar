@@ -10,7 +10,7 @@ struct ImportView: View {
     @Environment(AudioEngine.self) private var audioEngine
     @Environment(ImportManager.self) private var importManager
 
-    @Query(sort: [SortDescriptor(\.Song.dateAdded, order: .reverse)])
+    @Query(sort: [SortDescriptor(\Song.dateAdded, order: .reverse)])
     private var allSongs: [Song]
 
     @State private var isPickerPresented = false

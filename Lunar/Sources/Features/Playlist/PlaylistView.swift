@@ -18,7 +18,7 @@ struct PlaylistView: View {
     @State private var recentlyPlayed: [Song] = []
     @State private var favorites: [Song] = []
 
-    @Query(sort: [SortDescriptor(\.Playlist.dateCreated, order: .forward)])
+    @Query(sort: [SortDescriptor(\Playlist.dateCreated, order: .forward)])
     private var playlists: [Playlist]
 
     var body: some View {
