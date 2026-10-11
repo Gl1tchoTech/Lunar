@@ -11,6 +11,8 @@ struct PlayerState: Equatable {
     var duration: TimeInterval = 0
     /// 0.0 – 1.0 master volume.
     var volume: Float = 1.0
+    /// Playback rate (speed): 0.5 = half speed, 1.0 = normal, 2.0 = double speed.
+    var playbackRate: Float = 1.0
 }
 
 /// Identifies a song for the audio engine **without crossing the
