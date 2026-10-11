@@ -45,9 +45,9 @@ final class LyricsParserTests: XCTestCase {
         """
         let result = LyricsParser.parse(text)
         XCTAssertEqual(result.count, 2, "metadata lines must be dropped")
-        XCTAssertEqual(result[0].time, 12.5, accuracy: 0.0001)
+        XCTAssertEqual(result[0].timeValue, 12.5, accuracy: 0.0001)
         XCTAssertEqual(result[0].text, "first line")
-        XCTAssertEqual(result[1].time, 24.0, accuracy: 0.0001)
+        XCTAssertEqual(result[1].timeValue, 24.0, accuracy: 0.0001)
     }
 
     // MARK: - Happy-path parsing
@@ -55,7 +55,7 @@ final class LyricsParserTests: XCTestCase {
     func test_parse_singleLineWithWholeSeconds() {
         let result = LyricsParser.parse("[00:12]one line")
         XCTAssertEqual(result.count, 1)
-        XCTAssertEqual(result[0].time, 12.0, accuracy: 0.0001)
+        XCTAssertEqual(result[0].timeValue, 12.0, accuracy: 0.0001)
         XCTAssertEqual(result[0].text, "one line")
     }
 
@@ -67,14 +67,14 @@ final class LyricsParserTests: XCTestCase {
         """
         let result = LyricsParser.parse(text)
         XCTAssertEqual(result.count, 3)
-        XCTAssertEqual(result.map(\.time), [12.5, 48.2, 60.0])
+        XCTAssertEqual(result.map(\.timeValue), [12.5, 48.2, 60.0])
         XCTAssertEqual(result.map(\.text), ["first", "second", "third"])
     }
 
     func test_parse_dropsBlankTrailingText() {
         let result = LyricsParser.parse("[00:12]   ")
         XCTAssertEqual(result.count, 1)
-        XCTAssertEqual(result[0].time, 12.0, accuracy: 0.0001)
+        XCTAssertEqual(result[0].timeValue, 12.0, accuracy: 0.0001)
         XCTAssertEqual(result[0].text, "")
     }
 
@@ -85,28 +85,28 @@ final class LyricsParserTests: XCTestCase {
     func test_parse_fractionalTimestamp_doesNotDoubleParse() {
         let result = LyricsParser.parse("[00:12.50]lyric")
         XCTAssertEqual(result.count, 1)
-        XCTAssertEqual(result.first?.time, 12.5, accuracy: 0.0001)
-        XCTAssertNotEqual(result.first?.time, 62.0, accuracy: 0.0001)
+        XCTAssertEqual(result.first?.timeValue, 12.5, accuracy: 0.0001)
+        XCTAssertNotEqual(result.first?.timeValue, 62.0, accuracy: 0.0001)
     }
 
     func test_parse_oneDecimalPlace() {
         let result = LyricsParser.parse("[00:05.5]short fraction")
-        XCTAssertEqual(result.first?.time, 5.5, accuracy: 0.0001)
+        XCTAssertEqual(result.first?.timeValue, 5.5, accuracy: 0.0001)
     }
 
     func test_parse_threeDecimalPlaces() {
         let result = LyricsParser.parse("[00:00.123]millis")
-        XCTAssertEqual(result.first?.time, 0.123, accuracy: 0.0001)
+        XCTAssertEqual(result.first?.timeValue, 0.123, accuracy: 0.0001)
     }
 
     func test_parse_zeroSecondZeroFractionMinuteBoundary() {
         let result = LyricsParser.parse("[00:00.00]start")
-        XCTAssertEqual(result.first?.time, 0.0, accuracy: 0.0001)
+        XCTAssertEqual(result.first?.timeValue, 0.0, accuracy: 0.0001)
     }
 
     func test_parse_oneMinuteBoundary() {
         let result = LyricsParser.parse("[01:00.00]one minute")
-        XCTAssertEqual(result.first?.time, 60.0, accuracy: 0.0001)
+        XCTAssertEqual(result.first?.timeValue, 60.0, accuracy: 0.0001)
     }
 
     // MARK: - Multi-timestamp lines
@@ -118,8 +118,8 @@ final class LyricsParserTests: XCTestCase {
     func test_parse_multiTimestamp_emitsOneLinePerTimestamp() {
         let result = LyricsParser.parse("[00:12.50][00:48.20]chorus line")
         XCTAssertEqual(result.count, 2)
-        XCTAssertEqual(result[0].time, 12.5, accuracy: 0.0001)
-        XCTAssertEqual(result[1].time, 48.2, accuracy: 0.0001)
+        XCTAssertEqual(result[0].timeValue, 12.5, accuracy: 0.0001)
+        XCTAssertEqual(result[1].timeValue, 48.2, accuracy: 0.0001)
         XCTAssertEqual(result[0].text, "chorus line")
         XCTAssertEqual(result[1].text, "chorus line")
     }
@@ -129,8 +129,8 @@ final class LyricsParserTests: XCTestCase {
         // tag, then more text. We treat only TAGs as timestamps.
         let result = LyricsParser.parse("[00:01.00]alpha[00:02.00]beta")
         XCTAssertGreaterThanOrEqual(result.count, 1)
-        XCTAssertTrue(result.contains { abs($0.time - 1.0) < 0.0001 })
-        XCTAssertTrue(result.contains { abs($0.time - 2.0) < 0.0001 })
+        XCTAssertTrue(result.contains { abs($0.timeValue - 1.0) < 0.0001 })
+        XCTAssertTrue(result.contains { abs($0.timeValue - 2.0) < 0.0001 })
     }
 
     // MARK: - Malformed input
@@ -161,7 +161,7 @@ final class LyricsParserTests: XCTestCase {
     func test_parse_stripsBOM() {
         let text = "\u{FEFF}[00:12.00]first"
         let result = LyricsParser.parse(text)
-        XCTAssertEqual(result.first?.time, 12.0, accuracy: 0.0001)
+        XCTAssertEqual(result.first?.timeValue, 12.0, accuracy: 0.0001)
         XCTAssertEqual(result.first?.text, "first")
     }
 
@@ -169,15 +169,15 @@ final class LyricsParserTests: XCTestCase {
         let text = "[00:01.00]first\r\n[00:02.00]second\r\n"
         let result = LyricsParser.parse(text)
         XCTAssertEqual(result.count, 2)
-        XCTAssertEqual(result[0].time, 1.0, accuracy: 0.0001)
-        XCTAssertEqual(result[1].time, 2.0, accuracy: 0.0001)
+        XCTAssertEqual(result[0].timeValue, 1.0, accuracy: 0.0001)
+        XCTAssertEqual(result[1].timeValue, 2.0, accuracy: 0.0001)
     }
 
     func testParse_toleratesMixedCRAndLF() {
         let text = "[00:01]a\r[00:02]b\n[00:03]c\n"
         let result = LyricsParser.parse(text)
         XCTAssertEqual(result.count, 3)
-        XCTAssertEqual(result.map(\.time), [1.0, 2.0, 3.0])
+        XCTAssertEqual(result.map(\.timeValue), [1.0, 2.0, 3.0])
     }
 
     // MARK: - LyricsNavigator (active-line search)

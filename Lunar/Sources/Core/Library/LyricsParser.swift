@@ -11,7 +11,14 @@ import Foundation
 struct LyricLine: Equatable, Hashable {
     let time: TimeInterval
     let text: String
+
+    /// Wraps the stored `TimeInterval` (a non-optional `Double`) so the
+    /// `XCTAssertEqual` overloads in the parser tests accept it directly.
+    /// XCTest's `Double` assertion helpers only accept `Double`, not
+    /// `TimeInterval?`, even though `TimeInterval` is a `Double` alias.
+    var timeValue: Double { time }
 }
+
 
 /// Pure-Swift `.lrc` (LRC) parser.
 ///
