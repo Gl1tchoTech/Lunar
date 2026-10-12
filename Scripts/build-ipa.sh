@@ -56,6 +56,27 @@ fi
 echo "==> Generating Xcode project..."
 xcodegen generate
 
+# Force the generated project into an Xcode 15.4-compatible format.
+# XcodeGen's `options.xcodeVersion` does NOT reliably control the
+# pbxproj `objectVersion` in XcodeGen >= 2.42; it only sets
+# `LastUpgradeCheck`. The reliable fix is to rewrite the format header
+# lines immediately after generation, before `xcodebuild` touches the
+# project. This is the same workaround documented in
+# yonaskolb/XcodeGen#1578 and CocoaPods/CocoaPods#12583.
+PBX="$REPO_ROOT/Lunar.xcodeproj/project.pbxproj"
+if [ -f "$PBX" ]; then
+  perl -pi -e 's/objectVersion\s*=\s*\d+;/objectVersion = 56;/' "$PBX"
+  if grep -q 'compatibilityVersion' "$PBX"; then
+    perl -pi -e 's/compatibilityVersion\s*=\s*"[^"]+";/compatibilityVersion = "Xcode 14.0";/' "$PBX"
+  else
+    perl -pi -e 's/(objectVersion = 56;)/$1\n\tcompatibilityVersion = "Xcode 14.0";/' "$PBX"
+  fi
+  echo "==> Patched pbxproj objectVersion/compatibilityVersion"
+else
+  echo "::error::$PBX not found after xcodegen generate; cannot patch project format."
+  exit 1
+fi
+
 echo "==> Building $SCHEME for iOS (clean + Release)..."
 xcodebuild \
   -project "${APP_NAME}.xcodeproj" \
