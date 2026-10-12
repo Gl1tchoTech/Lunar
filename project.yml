@@ -1,21 +1,6 @@
 name: Lunar
 options:
-  # We intentionally do NOT set `xcodeVersion` here, because it does
-  # NOT control the pbxproj `objectVersion` in XcodeGen ≥ 2.42 — it
-  # only sets `LastUpgradeCheck` in the archive object. The actual
-  # `objectVersion` is emitted by the underlying XcodeProj library,
-  # which defaults to the host Xcode's current format (77 on Xcode 16,
-  # omitting `compatibilityVersion` entirely).
-  #
-  # The deterministic, runner-agnostic workaround lives in
-  # `.github/workflows/build-ipa.yml` step "Patch pbxproj for Xcode
-  # 15.4 backwards compatibility", which overwrites the
-  # `objectVersion` + `compatibilityVersion` header lines AFTER
-  # `xcodegen generate` runs. See yonaskolb/XcodeGen#1578 and
-  # CocoaPods/CocoaPods#12583 for the maintainer-recommended approach.
-  #
-  # `xcodeVersion` is intentionally left unset so future maintainers
-  # do not fall into the same trap I did at 3448447 / 0c13b2f.
+  xcodeVersion: "14.0"
   bundleIdPrefix: com.gl1tchotech
   deploymentTarget:
     iOS: "17.0"
@@ -23,6 +8,7 @@ options:
   createIntermediateGroups: true
   generateEmptyDirectories: true
   groupSortPosition: top
+
 
 configs:
   Debug: debug
@@ -133,28 +119,6 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: NO
 
-
-schemes:
-  Lunar:
-    build:
-      targets:
-        Lunar: all
-        LunarTests: [test]
-        LunarSnapshotTests: [test]
-    run:
-      config: Debug
-    test:
-      config: Debug
-      gatherCoverageData: true
-      targets:
-        - name: LunarTests
-        - name: LunarSnapshotTests
-    profile:
-      config: Release
-    analyze:
-      config: Debug
-    archive:
-      config: Release
 
 schemes:
   Lunar:
