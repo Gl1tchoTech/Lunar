@@ -1,5 +1,6 @@
 import XCTest
 import SwiftData
+import Lunar
 @testable import Lunar
 
 /// Pure-function tests for `SongSearch.filter(_:by:)` — the search

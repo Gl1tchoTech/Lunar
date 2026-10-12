@@ -1,5 +1,6 @@
 import XCTest
 import Observation
+import Lunar
 @testable import Lunar
 
 /// Tests for `QueueSettings` — the user-facing queue preferences

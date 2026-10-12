@@ -1,5 +1,6 @@
 import XCTest
 import Observation
+import Lunar
 @testable import Lunar
 
 /// Tests for `EQSettings` — the user-facing equalizer state.

@@ -1,5 +1,6 @@
 import XCTest
 import SwiftData
+import Lunar
 @testable import Lunar
 
 /// Tests for `MusicImporter` and (indirectly) `AudioMetadataExtractor`.

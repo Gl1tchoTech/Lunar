@@ -1,5 +1,6 @@
 import XCTest
 import Observation
+import Lunar
 @testable import Lunar
 
 /// Tests for `PlaybackSettings` — the user-facing playback preferences

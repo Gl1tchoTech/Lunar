@@ -1,5 +1,6 @@
 import XCTest
 import SwiftUI
+import Lunar
 @testable import Lunar
 
 /// Smoke tests ensuring the EmptyState surface compiles for every supported

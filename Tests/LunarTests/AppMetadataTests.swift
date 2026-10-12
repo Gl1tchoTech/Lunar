@@ -1,4 +1,5 @@
 import XCTest
+import Lunar
 @testable import Lunar
 
 /// `AppMetadata` is a small enum whose entire job is reproducing

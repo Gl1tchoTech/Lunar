@@ -1,5 +1,6 @@
 import XCTest
 import Observation
+import Lunar
 @testable import Lunar
 
 /// Tests for `SleepTimer` — confirms the locked choices (5 / 15 / 30 /

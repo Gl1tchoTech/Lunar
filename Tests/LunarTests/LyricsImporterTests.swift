@@ -1,5 +1,6 @@
 import XCTest
 import SwiftData
+import Lunar
 @testable import Lunar
 
 /// Tests for `LyricsImporter` — the per-song `.lrc` import pipeline.

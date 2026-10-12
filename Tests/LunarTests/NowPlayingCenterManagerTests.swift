@@ -1,6 +1,7 @@
 import XCTest
 import SwiftData
 import MediaPlayer
+import Lunar
 @testable import Lunar
 
 /// Tests for `NowPlayingCenterManager` — focuses on the no-network,
@@ -62,9 +63,9 @@ final class NowPlayingCenterManagerTests: XCTestCase {
         let song = try insertSong(title: "Cache A", hasArtwork: true)
         let manager = NowPlayingCenterManager(
             audioEngine: engine,
-            artworkResolver: { id in
-                resolverCalls.append(id)
-                return resolverResponses[id]
+            artworkResolver: { [self] id in
+                self.resolverCalls.append(id)
+                return self.resolverResponses[id]
             }
         )
         manager.attach()
@@ -86,9 +87,9 @@ final class NowPlayingCenterManagerTests: XCTestCase {
         let song = try insertSong(title: "Hibernate", hasArtwork: true)
         let manager = NowPlayingCenterManager(
             audioEngine: engine,
-            artworkResolver: { id in
-                resolverCalls.append(id)
-                return resolverResponses[id]
+            artworkResolver: { [self] id in
+                self.resolverCalls.append(id)
+                return self.resolverResponses[id]
             }
         )
         manager.attach()
@@ -117,9 +118,9 @@ final class NowPlayingCenterManagerTests: XCTestCase {
         let songB = try insertSong(title: "B", hasArtwork: true)
         let manager = NowPlayingCenterManager(
             audioEngine: engine,
-            artworkResolver: { id in
-                resolverCalls.append(id)
-                return resolverResponses[id]
+            artworkResolver: { [self] id in
+                self.resolverCalls.append(id)
+                return self.resolverResponses[id]
             }
         )
         manager.attach()
@@ -141,9 +142,9 @@ final class NowPlayingCenterManagerTests: XCTestCase {
         let song = try insertSong(title: "Plain", hasArtwork: false)
         let manager = NowPlayingCenterManager(
             audioEngine: engine,
-            artworkResolver: { id in
-                resolverCalls.append(id)
-                return resolverResponses[id]  // nil because we set nothing
+            artworkResolver: { [self] id in
+                self.resolverCalls.append(id)
+                return self.resolverResponses[id]  // nil because we set nothing
             }
         )
         manager.attach()
@@ -163,9 +164,9 @@ final class NowPlayingCenterManagerTests: XCTestCase {
         let song = try insertSong(title: "Never", hasArtwork: true)
         let manager = NowPlayingCenterManager(
             audioEngine: engine,
-            artworkResolver: { id in
-                resolverCalls.append(id)
-                return resolverResponses[id]
+            artworkResolver: { [self] id in
+                self.resolverCalls.append(id)
+                return self.resolverResponses[id]
             }
         )
         // Deliberately don't call `attach()`.
@@ -184,7 +185,7 @@ final class NowPlayingCenterManagerTests: XCTestCase {
         let song = try insertSong(title: "Bye", hasArtwork: true)
         let manager = NowPlayingCenterManager(
             audioEngine: engine,
-            artworkResolver: { id in resolverResponses[id] }
+            artworkResolver: { [self] id in self.resolverResponses[id] }
         )
         manager.attach()
         manager.update(
@@ -228,7 +229,7 @@ final class NowPlayingCenterManagerTests: XCTestCase {
         let song = try insertSong(title: "Title", artist: "Artist", hasArtwork: true)
         let manager = NowPlayingCenterManager(
             audioEngine: engine,
-            artworkResolver: { id in resolverResponses[id] }
+            artworkResolver: { [self] id in self.resolverResponses[id] }
         )
         manager.attach()
 

@@ -1,4 +1,5 @@
 import Foundation
+import Lunar
 
 /// In-memory audio engine fake. Used by unit tests so we never have
 /// to instantiate the real `AVAudioEngine` (which requires audio

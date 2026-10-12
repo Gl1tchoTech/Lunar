@@ -1,4 +1,5 @@
 import XCTest
+import Lunar
 @testable import Lunar
 
 /// Pure-Swift LRC parser tests.
