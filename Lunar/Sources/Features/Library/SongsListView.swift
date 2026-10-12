@@ -51,18 +51,16 @@ struct SongsListView: View {
             EmptyState(
                 title: "No music yet",
                 message: "Import songs from your device to start building your library.",
-                icon: {
-                    Image(systemName: "music.note.list")
-                        .font(.system(size: 60, weight: .light))
-                }
+                icon: { LibraryEmptyIllustration() }
             )
         } else if filtered.isEmpty {
             EmptyState(
                 title: "No results",
-                message: "No songs match \u{201C}\(searchText)\u{201D}.",
+                message: "No songs match \(searchText).",
                 icon: {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 50, weight: .light))
+                        .foregroundStyle(ColorTokens.appAccent)
                 }
             )
         } else {

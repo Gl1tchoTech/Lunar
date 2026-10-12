@@ -1,69 +1,126 @@
 import SwiftUI
+import SwiftData
 
-/// Reusable empty-state surface with MeloPlayer styling.
-struct EmptyState<Icon: View>: View {
+/// Shared empty-state card used across the Library tabs and the Import tab.
+/// Animated on appear so the illustration feels intentional instead of static.
+@MainActor
+struct EmptyState: View {
 
     let title: String
-    let message: String?
-    let primaryActionTitle: String?
-    let primaryAction: (() -> Void)?
-    @ViewBuilder let icon: () -> Icon
+    let message: String
+    let icon: () -> some View
+    var primaryActionTitle: String? = nil
+    var primaryAction: (() -> Void)? = nil
 
-    init(
-        title: String,
-        message: String? = nil,
-        primaryActionTitle: String? = nil,
-        primaryAction: (() -> Void)? = nil,
-        @ViewBuilder icon: @escaping () -> Icon = {
-            Image(systemName: "music.note")
-        }
-    ) {
-        self.title = title
-        self.message = message
-        self.primaryActionTitle = primaryActionTitle
-        self.primaryAction = primaryAction
-        self.icon = icon
-    }
+    @State private var shouldShow = false
 
     var body: some View {
         VStack(spacing: Spacing.l) {
-            Spacer(minLength: Spacing.xxl)
+            ZStack {
+                icon()
+                    .foregroundStyle(ColorTokens.appAccent.opacity(0.9))
+            }
+            .frame(height: 120)
+            .scaleEffect(shouldShow ? 1 : 0.82)
+            .opacity(shouldShow ? 1 : 0)
 
-            icon()
-                .font(.system(size: 60, weight: .light))
-                .foregroundStyle(ColorTokens.appAccent.opacity(0.85))
-                .padding(.bottom, Spacing.s)
+            VStack(spacing: Spacing.xs) {
+                Text(title)
+                    .font(Typography.headline)
+                    .fontWeight(.bold)
+                    .foregroundStyle(ColorTokens.textPrimary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
 
-            Text(title)
-                .font(Typography.title2)
-                .fontWeight(.bold)
-                .foregroundStyle(ColorTokens.textPrimary)
-                .multilineTextAlignment(.center)
-
-            if let message {
                 Text(message)
-                    .font(Typography.callout)
+                    .font(Typography.caption1)
                     .foregroundStyle(ColorTokens.textSecondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, Spacing.xxl)
+                    .lineLimit(3)
             }
+            .padding(.horizontal, Spacing.l)
 
-            if let primaryActionTitle, let primaryAction {
-                Button(action: primaryAction) {
-                    Text(primaryActionTitle)
-                        .font(Typography.button)
-                        .padding(.horizontal, Spacing.xl)
-                        .padding(.vertical, Spacing.s)
-                        .background(ColorTokens.appAccent)
+            if let actionTitle = primaryActionTitle, let action = primaryAction {
+                Button(action: action) {
+                    Text(actionTitle)
+                        .font(Typography.subhead)
+                        .fontWeight(.semibold)
                         .foregroundStyle(.black)
-                        .clipShape(Capsule())
+                        .padding(.horizontal, Spacing.l)
+                        .padding(.vertical, Spacing.s)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(ColorTokens.appAccent)
+                        )
                 }
-                .padding(.top, Spacing.m)
+                .buttonStyle(.plain)
+                .padding(.top, Spacing.xs)
             }
-
-            Spacer(minLength: Spacing.xxl)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(Spacing.l)
+        .background(ColorTokens.canvas)
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.4)) {
+                shouldShow = true
+            }
+        }
+    }
+}
+
+// MARK: - Shared library illustrations
+
+struct LibraryEmptyIllustration: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(ColorTokens.appAccent.opacity(0.12))
+                .frame(width: 120, height: 120)
+
+            Image(systemName: "music.note.list")
+                .font(.system(size: 54, weight: .light))
+                .foregroundStyle(ColorTokens.appAccent)
+        }
+    }
+}
+
+struct ArtistsEmptyIllustration: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(ColorTokens.appAccent.opacity(0.12))
+                .frame(width: 120, height: 120)
+
+            Image(systemName: "person.2.fill")
+                .font(.system(size: 54, weight: .light))
+                .foregroundStyle(ColorTokens.appAccent)
+        }
+    }
+}
+
+struct AlbumsEmptyIllustration: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(ColorTokens.appAccent.opacity(0.12))
+                .frame(width: 120, height: 120)
+
+            Image(systemName: "square.stack.fill")
+                .font(.system(size: 54, weight: .light))
+                .foregroundStyle(ColorTokens.appAccent)
+        }
+    }
+}
+
+struct SourceEmptyIllustration: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(ColorTokens.appAccent.opacity(0.12))
+                .frame(width: 120, height: 120)
+
+            Image(systemName: "folder.fill")
+                .font(.system(size: 54, weight: .light))
+                .foregroundStyle(ColorTokens.appAccent)
+        }
     }
 }

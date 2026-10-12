@@ -30,17 +30,17 @@ struct SettingsView: View {
                     }
 
                     settingsGroup(title: "More") {
-                        row("Feedback", systemImage: "envelope", to: StubPage(
+                        row("Feedback", systemImage: "envelope", to: ComingSoonPage(
                             title: "Feedback",
-                            message: "Reach the dev team directly. Coming soon.",
+                            message: "Reach the dev team directly.",
                             systemImage: "envelope"
                         ))
-                        row("Rate Us", systemImage: "hand.thumbsup", to: StubPage(
+                        row("Rate Us", systemImage: "hand.thumbsup", to: ComingSoonPage(
                             title: "Rate Us",
-                            message: "If Lunar makes your day a little better, we'd love a review.",
+                            message: "If Lunar makes your day better, we'd love a review.",
                             systemImage: "hand.thumbsup"
                         ))
-                        row("Privacy Policy", systemImage: "lock.shield", to: StubPage(
+                        row("Privacy Policy", systemImage: "lock.shield", to: ComingSoonPage(
                             title: "Privacy Policy",
                             message: "Lunar is local-first. This page will lay out the full policy.",
                             systemImage: "lock.shield"
@@ -144,21 +144,60 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - StubPage
+// MARK: - ComingSoonPage
 
-struct StubPage: View {
+struct ComingSoonPage: View {
     let title: String
     let message: String
     let systemImage: String
 
     var body: some View {
-        EmptyState(
-            title: title,
-            message: message,
-            icon: {
-                Image(systemName: systemImage)
-                    .font(.system(size: 60, weight: .light))
+        ScrollView {
+            VStack(spacing: Spacing.l) {
+                ComingSoonHeader(
+                    title: title,
+                    message: message,
+                    systemImage: systemImage
+                )
+
+                Text("Check back soon.")
+                    .font(Typography.caption1)
+                    .foregroundStyle(ColorTokens.textSecondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, Spacing.m)
             }
-        )
+            .padding(.horizontal, Spacing.l)
+            .padding(.bottom, 120)
+        }
+        .background(ColorTokens.canvas)
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+    }
+}
+
+struct ComingSoonHeader: View {
+    let title: String
+    let message: String
+    let systemImage: String
+
+    var body: some View {
+        VStack(spacing: Spacing.m) {
+            Image(systemName: systemImage)
+                .font(.system(size: 54, weight: .light))
+                .foregroundStyle(ColorTokens.appAccent)
+
+            Text(title)
+                .font(Typography.title1)
+                .fontWeight(.bold)
+                .foregroundStyle(ColorTokens.textPrimary)
+
+            Text(message)
+                .font(Typography.body)
+                .foregroundStyle(ColorTokens.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Spacing.xl)
     }
 }

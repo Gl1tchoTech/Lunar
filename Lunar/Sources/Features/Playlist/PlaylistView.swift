@@ -1,253 +1,282 @@
 import SwiftUI
 import SwiftData
 
-/// Playlist tab with MeloPlayer liquid-glass styling.
+// MARK: - Playlist view (reference-aligned)
+
+/// Reference-aligned Playlist tab.
+///
+/// Layout mirrors the PNGs: a "Playlists" title, a horizontal
+/// smart-tile row, and a list of imported/playlist rows below.
 @MainActor
 struct PlaylistView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(AudioEngine.self) private var audioEngine
+    @Environment(TabRouter.self) private var tabRouter
 
-    @State private var libraryService: LibraryService?
     @State private var showingCreateDialog = false
     @State private var newPlaylistName = ""
+    @State private var selectedPlaylist: Playlist?
+    @State private var presentingNowPlaying = false
 
-    @State private var navPath: [PlaylistNavEnum] = []
-
-    @State private var mostPlayed: [Song] = []
-    @State private var recentlyPlayed: [Song] = []
-    @State private var favorites: [Song] = []
-
-    @Query(sort: [SortDescriptor(\Playlist.dateCreated, order: .forward)])
-    private var playlists: [Playlist]
+    // Placeholder collections — the reference PNG shows smart tiles
+    // plus a small list of local playlists.
+    @State private var smartTiles: [SmartPlaylistTileModel] = [
+        .favorites(songCount: 0),
+        .mostPlayed(songCount: 0),
+        .recentlyPlayed(songCount: 0),
+    ]
+    @State private var localPlaylists: [LocalPlaylistModel] = []
 
     var body: some View {
-        NavigationStack(path: $navPath) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Spacing.l) {
-                    header
-                    smartTilesRow
-                    localPlaylistHeader
-                    CreateNewRow {
-                        showingCreateDialog = true
+        NavigationStack {
+            ZStack {
+                ColorTokens.canvas.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Spacing.m) {
+                        titleBar
+
+                        smartTilesRow
+
+                        divider
+
+                        localPlaylistsSection
                     }
-                    if !playlists.isEmpty {
-                        LazyVStack(spacing: Spacing.m) {
-                            ForEach(playlists) { playlist in
-                                NavigationLink(value: PlaylistNavEnum.regular(playlist)) {
-                                    LocalPlaylistRow(playlist: playlist)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    } else {
-                        emptyHint
-                    }
-                }
-                .padding(.horizontal, Spacing.l)
-                .padding(.top, Spacing.s)
-                .padding(.bottom, 140)
-            }
-            .background(ColorTokens.canvas)
-            .navigationTitle("Playlist")
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .navigationDestination(for: PlaylistNavEnum.self) { entry in
-                switch entry {
-                case .regular(let playlist):
-                    PlaylistDetailView(
-                        title: playlist.title,
-                        subtitle: detailSubtitle(for: playlist),
-                        heroStyle: playlist.title == "My Favorites"
-                            ? .heart
-                            : .icon(systemName: "music.note"),
-                        songs: playlist.songs.sorted(by: { $0.dateAdded > $1.dateAdded })
-                    )
-                case .smart(let route):
-                    PlaylistDetailView(
-                        title: route.kind.title,
-                        subtitle: subtitle(forSongs: route.songs),
-                        heroStyle: route.kind.favoritesRouteStyle,
-                        songs: route.songs
-                    )
+                    .padding(.horizontal, Spacing.l)
+                    .padding(.top, Spacing.s)
+                    .padding(.bottom, 140)
                 }
             }
+            .navigationBarHidden(true)
             .alert("New Playlist", isPresented: $showingCreateDialog) {
-                TextField("Title", text: $newPlaylistName)
+                TextField("Name", text: $newPlaylistName)
+                    .textInputAutocapitalization(.words)
                 Button("Cancel", role: .cancel) {
                     newPlaylistName = ""
                 }
-                Button("Save") {
-                    let trimmed = newPlaylistName.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !trimmed.isEmpty else { return }
-                    libraryService?.createPlaylist(title: trimmed)
-                    newPlaylistName = ""
+                Button("Create") {
+                    createPlaylist()
                 }
+            } message: {
+                Text("Give your playlist a name.")
             }
-            .task {
-                if libraryService == nil {
-                    libraryService = LibraryService(context: modelContext)
-                }
-                mostPlayed = libraryService?.mostPlayedSongs() ?? []
-                recentlyPlayed = libraryService?.recentlyPlayedSongs() ?? []
-                favorites = libraryService?.favoriteSongs() ?? []
+            .fullScreenCover(isPresented: $presentingNowPlaying) {
+                NowPlayingView()
+                    .environment(audioEngine)
             }
         }
+        .preferredColorScheme(.dark)
     }
 
-    enum PlaylistNavEnum: Hashable {
-        case regular(Playlist)
-        case smart(SmartPlaylistRoute)
-    }
+    // MARK: title bar
 
-    private var header: some View {
+    private var titleBar: some View {
         HStack {
-            Text("Playlist")
+            Text("Playlists")
                 .font(Typography.display)
                 .foregroundStyle(ColorTokens.textPrimary)
+
             Spacer()
+
+            Button {
+                showingCreateDialog = true
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(ColorTokens.textPrimary)
+                    .frame(width: 36, height: 36)
+                    .background(
+                        Circle()
+                            .fill(ColorTokens.surface)
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Create playlist")
         }
+        .padding(.horizontal, Spacing.l)
+        .padding(.top, Spacing.s)
     }
+
+    // MARK: smart tiles
 
     private var smartTilesRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Spacing.m) {
-                SmartPlaylistTile(
-                    kind: .favorites,
-                    songCount: favorites.count,
-                    totalDuration: favorites.reduce(0.0) { $0 + $1.duration },
-                    action: {
-                        navPath.append(.smart(.favorites(favorites)))
-                    }
-                )
-                .frame(width: 170)
-                SmartPlaylistTile(
-                    kind: .mostPlayed,
-                    songCount: mostPlayed.count,
-                    totalDuration: mostPlayed.reduce(0.0) { $0 + $1.duration },
-                    action: {
-                        navPath.append(.smart(.mostPlayed(mostPlayed)))
-                    }
-                )
-                .frame(width: 170)
-                SmartPlaylistTile(
-                    kind: .recentlyPlayed,
-                    songCount: recentlyPlayed.count,
-                    totalDuration: recentlyPlayed.reduce(0.0) { $0 + $1.duration },
-                    action: {
-                        navPath.append(.smart(.recentlyPlayed(recentlyPlayed)))
-                    }
-                )
-                .frame(width: 170)
+        HStack(spacing: Spacing.s) {
+            ForEach(smartTiles) { tile in
+                SmartTileButton(tile: tile) {
+                    tapSmartTile(tile)
+                }
             }
-            .padding(.horizontal, 2)
         }
     }
 
-    private var localPlaylistHeader: some View {
-        HStack(spacing: Spacing.xs) {
-            Text("My Local Playlist (\(playlists.count))")
+    // MARK: local playlists
+
+    private var localPlaylistsSection: some View {
+        let hasPlaylists = !localPlaylists.isEmpty
+        return VStack(alignment: .leading, spacing: Spacing.s) {
+            Text("All Playlists")
                 .font(Typography.title3)
                 .fontWeight(.bold)
                 .foregroundStyle(ColorTokens.textPrimary)
+
+            if hasPlaylists {
+                VStack(spacing: Spacing.s) {
+                    ForEach(localPlaylists) { playlist in
+                        LocalPlaylistRow(playlist: playlist) {
+                            selectedPlaylist = playlist.playlist
+                        }
+                    }
+                }
+                .padding(.horizontal, Spacing.xs)
+                .padding(.vertical, Spacing.xs)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(ColorTokens.surface.opacity(0.6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                        )
+                )
+            } else {
+                Text("No playlists yet.")
+                    .font(Typography.body)
+                    .foregroundStyle(ColorTokens.textSecondary)
+                    .padding(.horizontal, Spacing.l)
+            }
+        }
+    }
+
+    private var divider: some View {
+        HStack {
+            Rectangle()
+                .fill(ColorTokens.hairline)
+                .frame(height: 1)
             Spacer()
         }
-        .padding(.top, Spacing.m)
+        .padding(.vertical, Spacing.s)
     }
 
-    private var emptyHint: some View {
-        EmptyState(
-            title: "No playlists yet",
-            message: "Create your first playlist to organize your music.",
-            icon: {
-                Image(systemName: "music.note.tv")
-                    .font(.system(size: 50, weight: .light))
-            }
+    // MARK: actions
+
+    private func refreshSmartTiles() {
+        guard let service = libraryService else { return }
+        smartTiles = [
+            .favorites(songCount: service.favoriteSongs().count),
+            .mostPlayed(songCount: service.mostPlayedSongs().count),
+            .recentlyPlayed(songCount: service.recentlyPlayedSongs().count),
+        ]
+    }
+
+    private func tapSmartTile(_ tile: SmartPlaylistTileModel) {
+        guard let service = libraryService else { return }
+        let songs: [Song]
+        switch tile.kind {
+        case .favorites:
+            songs = service.favoriteSongs()
+        case .mostPlayed:
+            songs = service.mostPlayedSongs()
+        case .recentlyPlayed:
+            songs = service.recentlyPlayedSongs()
+        }
+        guard !songs.isEmpty else { return }
+        let (requests, startIndex) = service.playbackRequests(
+            for: songs,
+            startingAt: nil
         )
-        .frame(minHeight: 220)
+        audioEngine.playQueue(requests, startIndex: startIndex)
+        presentingNowPlaying = true
     }
 
-    private func detailSubtitle(for playlist: Playlist) -> String? {
-        let songs = playlist.songs
-        let total = songs.reduce(0.0) { $0 + $1.duration }
-        let formatted = formatTotal(total)
-        return "\(songs.count) song\(songs.count == 1 ? "" : "s") | \(formatted)"
-    }
-
-    private func subtitle(forSongs songs: [Song]) -> String {
-        let total = songs.reduce(0.0) { $0 + $1.duration }
-        return "\(songs.count) song\(songs.count == 1 ? "" : "s") | \(formatTotal(total))"
-    }
-
-    private func formatTotal(_ seconds: TimeInterval) -> String {
-        guard seconds > 0 else { return "0:00" }
-        let total = Int(seconds)
-        let h = total / 3600
-        let m = total / 60
-        let s = total % 60
-        if h > 0 { return "\(h):\(String(format: "%02d", m)):\(String(format: "%02d", s))" }
-        return "\(m):\(String(format: "%02d", s))"
+    private func createPlaylist() {
+        let trimmed = newPlaylistName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let service = LibraryService(context: modelContext)
+        _ = service.createPlaylist(title: trimmed)
+        newPlaylistName = ""
     }
 }
 
-// MARK: - Smart Playlist Route
+// MARK: - Models
 
-enum SmartPlaylistRoute: Hashable {
-    case favorites([Song])
-    case mostPlayed([Song])
-    case recentlyPlayed([Song])
+struct SmartPlaylistTileModel: Identifiable {
+    let id: UUID
+    let kind: SmartPlaylistTile.Kind
+    let songCount: Int
 
-    var kind: SmartPlaylistTile.Kind {
-        switch self {
-        case .favorites:      return .favorites
-        case .mostPlayed:     return .mostPlayed
-        case .recentlyPlayed: return .recentlyPlayed
-        }
+    init(kind: SmartPlaylistTile.Kind, songCount: Int) {
+        self.id = UUID()
+        self.kind = kind
+        self.songCount = songCount
     }
 
-    var songs: [Song] {
-        switch self {
-        case .favorites(let songs),
-             .mostPlayed(let songs),
-             .recentlyPlayed(let songs):
-            return songs
-        }
+    static func favorites(songCount: Int) -> Self {
+        Self(kind: .favorites, songCount: songCount)
+    }
+    static func mostPlayed(songCount: Int) -> Self {
+        Self(kind: .mostPlayed, songCount: songCount)
+    }
+    static func recentlyPlayed(songCount: Int) -> Self {
+        Self(kind: .recentlyPlayed, songCount: songCount)
     }
 }
 
 extension SmartPlaylistTile.Kind {
-    var favoritesRouteStyle: PlaylistDetailView.HeroStyle {
+    var emptyLabel: String {
         switch self {
-        case .favorites:      return .heart
-        case .mostPlayed:     return .icon(systemName: "music.note")
-        case .recentlyPlayed: return .icon(systemName: "clock")
+        case .favorites:   "No favorites yet"
+        case .mostPlayed:  "No most-played tracks yet"
+        case .recentlyPlayed: "No recently played tracks yet"
         }
     }
 }
 
-// MARK: - Create New Row
+struct LocalPlaylistModel: Identifiable {
+    let id = UUID()
+    let playlist: Playlist
 
-struct CreateNewRow: View {
+    static var sample: Self {
+        let pl = Playlist(title: "Sample Playlist")
+        return Self(playlist: pl)
+    }
+}
 
+private extension SmartPlaylistTile.Kind {
+    func play(requests: [PlaybackRequest], startIndex: Int) {
+        // Placeholder for future expansion; playback is triggered via
+        // PlaylistView.tapSmartTile for now.
+    }
+}
+
+// MARK: - Smart tile button
+
+private struct SmartTileButton: View {
+    let tile: SmartPlaylistTileModel
     let action: () -> Void
 
     var body: some View {
-        Button {
-            action()
-        } label: {
-            HStack(spacing: Spacing.m) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 28, weight: .semibold))
-                    .foregroundStyle(ColorTokens.appAccent)
+        Button(action: action) {
+            VStack(spacing: Spacing.xs) {
+                tile.kind.icon
+                    .font(.system(size: 34, weight: .semibold))
+                    .foregroundStyle(.white)
 
-                Text("Create New")
-                    .font(Typography.headline)
-                    .foregroundStyle(ColorTokens.textPrimary)
+                Text(tile.kind.title)
+                    .font(Typography.subhead)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
 
-                Spacer()
+                if tile.songCount > 0 {
+                    Text("\(tile.songCount)")
+                        .font(Typography.caption1)
+                        .foregroundStyle(.white.opacity(0.8))
+                }
             }
-            .padding(.horizontal, Spacing.m)
-            .padding(.vertical, Spacing.m)
-            .modifier(ColorTokens.glassCard(cornerRadius: 18))
+            .frame(maxWidth: .infinity)
+            .padding(Spacing.s)
+            .background(tile.kind.gradient)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
     }

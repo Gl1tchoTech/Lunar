@@ -33,16 +33,12 @@ struct BrowseView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Spacing.l) {
-                    HStack {
-                        Text("Browse")
-                            .font(Typography.display)
-                            .foregroundStyle(ColorTokens.textPrimary)
-                        Spacer()
-                    }
+                    header
 
                     LazyVGrid(columns: columns, spacing: Spacing.m) {
                         ForEach(categories) { category in
                             categoryCard(category)
+                                .accessibilityLabel(category.title)
                         }
                     }
 
@@ -54,6 +50,15 @@ struct BrowseView: View {
             .background(ColorTokens.canvas)
             .navigationTitle("Browse")
             .toolbarColorScheme(.dark, for: .navigationBar)
+        }
+    }
+
+    private var header: some View {
+        HStack {
+            Text("Browse")
+                .font(Typography.display)
+                .foregroundStyle(ColorTokens.textPrimary)
+            Spacer()
         }
     }
 
@@ -84,24 +89,17 @@ struct BrowseView: View {
                 )
             )
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .shadow(color: .black.opacity(0.35), radius: 10, x: 0, y: 4)
         }
         .buttonStyle(.plain)
+        .scaleEffect(1)
     }
 
     private var comingSoonFootnote: some View {
-        HStack(alignment: .top, spacing: Spacing.s) {
-            Image(systemName: "info.circle")
-                .foregroundStyle(ColorTokens.appAccent)
-            Text("Coming soon — Browse hosts the upcoming song downloader and streamer.")
-                .font(Typography.footnote)
-                .foregroundStyle(ColorTokens.textSecondary)
-                .multilineTextAlignment(.leading)
-        }
-        .padding(Spacing.m)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(ColorTokens.surface)
+        ComingSoonHeader(
+            title: "Browse",
+            message: "Browse will host the upcoming song discovery, charts, and streaming surfaces.",
+            systemImage: "sparkles"
         )
     }
 }

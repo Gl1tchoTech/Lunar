@@ -9,16 +9,13 @@ struct EqualizerView: View {
     @Query(sort: [SortDescriptor(\EQPreset.name, order: .forward)])
     private var presets: [EQPreset]
 
+    @State private var presetFlyoutPreset: EQPreset?
+
     var body: some View {
         @Bindable var bindable = settings
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.l) {
-                HStack {
-                    Text("Equalizer")
-                        .font(Typography.display)
-                        .foregroundStyle(ColorTokens.textPrimary)
-                    Spacer()
-                }
+                header
 
                 settingsGroup {
                     Toggle("Equalizer On", isOn: $bindable.isEnabled)
@@ -27,23 +24,25 @@ struct EqualizerView: View {
                         .tint(ColorTokens.appAccent)
                 }
 
-                settingsGroup {
-                    BandsGrid(settings: settings)
+                if bindable.isEnabled {
+                    settingsGroup {
+                        BandsGrid(settings: settings)
+                            .padding(.vertical, Spacing.s)
+                    }
+
+                    settingsGroup {
+                        PresetChips(
+                            presets: presets,
+                            activeID: settings.currentPresetID,
+                            onTap: { preset in
+                                presetFlyoutPreset = preset
+                            }
+                        )
                         .padding(.vertical, Spacing.s)
+                    }
                 }
 
-                settingsGroup {
-                    PresetChips(
-                        presets: presets,
-                        activeID: settings.currentPresetID,
-                        onTap: { preset in
-                            settings.apply(preset: preset)
-                        }
-                    )
-                    .padding(.vertical, Spacing.s)
-                }
-
-                Button(role: .destructive) {
+                Button {
                     settings.reset()
                 } label: {
                     HStack {
@@ -54,6 +53,8 @@ struct EqualizerView: View {
                     }
                     .padding(.vertical, Spacing.m)
                 }
+                .disabled(!bindable.isEnabled)
+                .opacity(!bindable.isEnabled ? 0.55 : 1)
             }
             .padding(.horizontal, Spacing.l)
             .padding(.top, Spacing.s)
@@ -62,6 +63,45 @@ struct EqualizerView: View {
         .background(ColorTokens.canvas)
         .navigationTitle("Equalizer")
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .confirmationDialog(
+            "Apply Preset",
+            isPresented: .init(
+                get: { presetFlyoutPreset != nil },
+                set: { if !$0 { presetFlyoutPreset = nil } }
+            ),
+            presenting: presetFlyoutPreset
+        ) { preset in
+            Button("Apply \\(preset.name)", role: .destructive) {
+                settings.apply(preset: preset)
+                presetFlyoutPreset = nil
+            }
+            Button("Cancel", role: .cancel) {
+                presetFlyoutPreset = nil
+            }
+        } message: { preset in
+            Text(preset.description)
+        } titleVisibility: .visible
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            Text("Equalizer")
+                .font(Typography.display)
+                .foregroundStyle(ColorTokens.textPrimary)
+            Text(bandSummary)
+                .font(Typography.caption1)
+                .foregroundStyle(ColorTokens.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var bandSummary: String {
+        let active = settings.bands.enumerated().filter { $0.element != 0 }
+        if active.isEmpty { return "All bands flat" }
+        if active.count == 1 {
+            return "1 band active"
+        }
+        return "\(active.count) bands active"
     }
 
     private func settingsGroup<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -186,11 +226,31 @@ private struct PresetChips: View {
                                 )
                         }
                         .buttonStyle(.plain)
+                        .scaleEffect(isActive ? 1.02 : 1)
+                        .animation(.easeInOut(duration: 0.12), value: isActive)
                     }
                 }
                 .padding(.horizontal, Spacing.m)
             }
         }
         .padding(.vertical, Spacing.s)
+    }
+}
+
+// MARK: - Preset preview helper
+
+extension EQPreset {
+    var description: String {
+        if bands.allSatisfy({ $0 == 0 }) && name.lowercased().contains("flat") {
+            return "No EQ change — audio stays neutral."
+        }
+        let active = bands.enumerated().filter { $0.element != 0 }
+        if active.isEmpty {
+            return "No EQ change."
+        }
+        if active.count == 1 {
+            return "Boosts or cuts a single band."
+        }
+        return "Adjusts \(active.count) frequency bands."
     }
 }

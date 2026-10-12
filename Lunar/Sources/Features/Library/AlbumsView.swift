@@ -14,10 +14,7 @@ struct AlbumsView: View {
                 EmptyState(
                     title: "No albums yet",
                     message: "Once you import music, every album in your library will show up here.",
-                    icon: {
-                        Image(systemName: "square.stack.fill")
-                            .font(.system(size: 60, weight: .light))
-                    }
+                    icon: { AlbumsEmptyIllustration() }
                 )
             } else {
                 albumsList
