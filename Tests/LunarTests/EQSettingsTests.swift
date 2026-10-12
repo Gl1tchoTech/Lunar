@@ -154,6 +154,6 @@ final class EQSettingsTests: XCTestCase {
         // will be a transient placeholder. That placeholder is
         // unique-per-instance, which is all `EQSettings.apply` needs
         // for equality comparison.
-        EQPreset(name: name, bands: bands, isBuiltIn: true)
+        EQPreset(name: name, isBuiltIn: true, bands: bands)
     }
 }
