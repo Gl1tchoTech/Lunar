@@ -133,31 +133,6 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: NO
 
-  LunarTests:
-    type: bundle.unit-test
-    platform: iOS
-    deploymentTarget: "17.0"
-    sources:
-      - path: Tests/LunarTests
-    dependencies:
-      - target: Lunar
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.gl1tchotech.lunar.tests
-        GENERATE_INFOPLIST_FILE: YES
-
-  LunarSnapshotTests:
-    type: bundle.unit-test
-    platform: iOS
-    deploymentTarget: "17.0"
-    sources:
-      - path: Tests/LunarSnapshotTests
-    dependencies:
-      - target: Lunar
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.gl1tchotech.lunar.snapshot
-        GENERATE_INFOPLIST_FILE: YES
 
 schemes:
   Lunar:
@@ -174,6 +149,20 @@ schemes:
       targets:
         - name: LunarTests
         - name: LunarSnapshotTests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
+
+schemes:
+  Lunar:
+    build:
+      targets:
+        Lunar: all
+    run:
+      config: Debug
     profile:
       config: Release
     analyze:

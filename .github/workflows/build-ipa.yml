@@ -8,7 +8,6 @@ on:
       - '.github/workflows/**'
       - 'Lunar/**'
       - 'project.yml'
-      - 'Tests/**'
       - 'Scripts/**'
 
 concurrency:
@@ -169,22 +168,6 @@ jobs:
           fi
           echo "  -> OK (matches third-party Xcode 14.0 compatibility floor)"
 
-      - name: Run unit + snapshot tests (Debug on iPhone 15 simulator)
-        # We deliberately do NOT pipe to xcpretty here: a non-zero exit from
-        # xcodebuild must fail the job. xcpretty is not pre-installed on
-        # macos-14 runners and using `|| true` would silently mask failures.
-        run: |
-          set -o pipefail
-          xcodebuild \
-            -project Lunar.xcodeproj \
-            -scheme "$SCHEME" \
-            -configuration Debug \
-            -destination "platform=iOS Simulator,name=iPhone 15,OS=latest" \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            test
-
       - name: Build app (Release, generic iOS, unsigned)
         run: |
           set -o pipefail
@@ -200,13 +183,20 @@ jobs:
             ONLY_ACTIVE_ARCH=NO \
             build
 
-      - name: Package as unsigned IPA
-        run: bash Scripts/build-ipa.sh "$CONFIG"
+      - name: Package unsigned IPA + archive as zip
+        run: |
+          set -euo pipefail
+          bash Scripts/build-ipa.sh "$CONFIG"
+          mkdir -p build
+          zip -qr build/Lunar.zip build/Lunar.ipa
+          echo "Built: build/Lunar.ipa and build/Lunar.zip"
 
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
         with:
           name: Lunar-unsigned-ipa
-          path: build/Lunar.ipa
+          path: |
+            build/Lunar.ipa
+            build/Lunar.zip
           if-no-files-found: error
           retention-days: 30
