@@ -253,37 +253,6 @@ struct LyricsView: View {
     }
 }
 
-// MARK: - LyricsNavigator (active-line search)
-
-/// Picks the lyric line that should be highlighted at a given
-/// playback time.
-///
-/// Returns the index of the **last** line whose `time <= currentTime`,
-/// or `nil` if the time precedes the first line. Using the last
-/// qualifying index means a song at t=0 doesn't briefly show no
-/// highlight before the first timestamp arrives — instead it picks
-/// the line that's about to unlock next. (Kept `public`-ish: easy to
-/// write a separate test target later.)
-enum LyricsNavigator {
-
-    static func activeLine(in lines: [LyricLine], at time: TimeInterval) -> Int? {
-        guard !lines.isEmpty, time >= 0 else { return nil }
-        // Binary search: find the last index with `lines[idx].time <= time`.
-        var low = 0
-        var high = lines.count - 1
-        while low <= high {
-            let mid = (low + high) / 2
-            if lines[mid].time <= time {
-                low = mid + 1
-            } else {
-                high = mid - 1
-            }
-        }
-        if high < 0 { return nil }
-        return min(high, lines.count - 1)
-    }
-}
-
 // MARK: - LyricRow
 
 @MainActor
