@@ -1,5 +1,16 @@
 import SwiftUI
 
+// NOTE: This file is the single canonical PlaybackSettingsView for the
+// Lunar module. A duplicate copy previously existed at
+// `Lunar/Sources/Features/Settings/PlaybackSettingsView.swift`, which
+// caused the Swift compile error:
+//
+//   "Filename 'PlaybackSettingsView.swift' used twice ... Filenames are
+//    used to distinguish private declarations with the same name."
+//
+// That duplicate was removed. There should only ever be one
+// `PlaybackSettingsView.swift` in this module.
+
 /// Settings ▸ Playback Setting with MeloPlayer styling.
 @MainActor
 struct PlaybackSettingsView: View {
