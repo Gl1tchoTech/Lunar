@@ -60,7 +60,7 @@ struct ImportView: View {
             message: "Bring in audio from Files, iCloud Drive, On My iPhone, or other apps. Lunar reads ID3 / iTunes / Vorbis tags and embedded artwork automatically.",
             primaryActionTitle: "Import Audio Files",
             primaryAction: openPicker,
-            icon: {
+            content: {
                 Image(systemName: "square.and.arrow.down.on.square")
                     .font(.system(size: 60, weight: .light))
             }

@@ -20,7 +20,7 @@ struct ArtistDetailView: View {
                 EmptyState(
                     title: "No songs yet",
                     message: "This artist has no songs in your library.",
-                    icon: {
+                    content: {
                         Image(systemName: "music.note.list")
                             .font(.system(size: 50, weight: .light))
                     }

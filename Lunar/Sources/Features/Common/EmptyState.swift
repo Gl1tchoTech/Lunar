@@ -4,11 +4,11 @@ import SwiftData
 /// Shared empty-state card used across the Library tabs and the Import tab.
 /// Animated on appear so the illustration feels intentional instead of static.
 @MainActor
-struct EmptyState: View {
+struct EmptyState<Content: View>: View {
 
     let title: String
     let message: String
-    let icon: () -> some View
+    @ViewBuilder let content: () -> Content
     var primaryActionTitle: String? = nil
     var primaryAction: (() -> Void)? = nil
 
@@ -17,7 +17,7 @@ struct EmptyState: View {
     var body: some View {
         VStack(spacing: Spacing.l) {
             ZStack {
-                icon()
+                content()
                     .foregroundStyle(ColorTokens.appAccent.opacity(0.9))
             }
             .frame(height: 120)

@@ -13,7 +13,7 @@ struct SourceView: View {
                 EmptyState(
                     title: "No source yet",
                     message: "Once you import music, your Local Files and other-app sources will appear here.",
-                    icon: { SourceEmptyIllustration() }
+                    content: { SourceEmptyIllustration() }
                 )
             } else {
                 sourceList

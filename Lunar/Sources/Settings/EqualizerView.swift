@@ -71,7 +71,7 @@ struct EqualizerView: View {
             ),
             presenting: presetFlyoutPreset
         ) { preset in
-            Button("Apply \\(preset.name)", role: .destructive) {
+            Button("Apply \(preset.name)", role: .destructive) {
                 settings.apply(preset: preset)
                 presetFlyoutPreset = nil
             }
@@ -80,7 +80,7 @@ struct EqualizerView: View {
             }
         } message: { preset in
             Text(preset.description)
-        } titleVisibility: .visible
+        }
     }
 
     private var header: some View {

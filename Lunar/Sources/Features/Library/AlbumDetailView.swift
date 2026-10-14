@@ -21,7 +21,7 @@ struct AlbumDetailView: View {
                 EmptyState(
                     title: "Empty album",
                     message: "This album has no songs in your library yet.",
-                    icon: {
+                    content: {
                         Image(systemName: "music.note.list")
                             .font(.system(size: 50, weight: .light))
                     }

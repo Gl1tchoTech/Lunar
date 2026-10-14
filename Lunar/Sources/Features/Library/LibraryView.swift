@@ -249,11 +249,11 @@ struct LibraryView: View {
     }
 
     private var activeSortDescriptor: SortDescriptor<Song> {
-        let field: KeyPath<Song, Comparable> = activeSortKeyPath
+        let field: KeyPath<Song, any Comparable> = activeSortKeyPath
         return SortDescriptor(field, order: direction == .ascending ? .forward : .reverse)
     }
 
-    private var activeSortKeyPath: KeyPath<Song, Comparable> {
+    private var activeSortKeyPath: KeyPath<Song, any Comparable> {
         switch sortKey {
         case .songName:       \Song.title
         case .artistName:     \Song.artist

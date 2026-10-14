@@ -14,7 +14,7 @@ struct ArtistsView: View {
                 EmptyState(
                     title: "No artists yet",
                     message: "Once you import music, every performer in your library will show up here.",
-                    icon: { ArtistsEmptyIllustration() }
+                    content: { ArtistsEmptyIllustration() }
                 )
             } else {
                 artistsList

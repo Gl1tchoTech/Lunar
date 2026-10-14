@@ -30,7 +30,7 @@ struct PlaylistDetailView: View {
                     message: title == "My Favorites"
                         ? "Tap the heart on any song to add it to your favorites."
                         : "This playlist is empty.",
-                    icon: { Image(systemName: "music.note.list") }
+                    content: { Image(systemName: "music.note.list") }
                 )
             } else {
                 playlistList
